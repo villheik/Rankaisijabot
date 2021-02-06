@@ -5,7 +5,7 @@ from os import path
 config = configparser.ConfigParser()
 if not (path.exists('../config.ini')):
     print("Could not find config file.")
-config.read('../config.ini')
+config.read_file(open("../config.ini", "r"))
 TOKEN = config['BOT']['Token']
 
 description = '''Rankaisijabot'''
