@@ -1,7 +1,10 @@
-import discord, configparser
+import discord, configparser, os.path
 from discord.ext import commands
+from os import path
 
 config = configparser.ConfigParser()
+if not (path.exists('../config.ini')):
+    print("Could not find config file.")
 config.read('../config.ini')
 TOKEN = config['BOT']['Token']
 
