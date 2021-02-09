@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.9.1-buster
 
 ARG bot_token_arg
 
