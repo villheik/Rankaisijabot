@@ -15,7 +15,7 @@ RUN apt-get -y update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pipenv
-RUN pip install -U pipenv
+RUN pip3 install -U pipenv
 
 # Create the working directory
 WORKDIR /bot
@@ -27,5 +27,5 @@ RUN pipenv install --system --deploy --sequential
 # Copy the source code in last to optimize rebuilding the image
 COPY . .
 
-ENTRYPOINT ["python"]
+ENTRYPOINT ["python3"]
 CMD ["-m", "bot"]
