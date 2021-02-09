@@ -28,7 +28,7 @@ class Stock(commands.Cog, name="stock"):
             await context.send(result)
     
     @commands.command(name="eth")
-    async def btc(self, context, currency=None):
+    async def eth(self, context, currency=None):
         if (currency==None):
             currency="USD"
 
