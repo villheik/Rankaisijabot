@@ -6,3 +6,4 @@ bot:
 cogs:
     cogs:
         - hello
+        - stock
