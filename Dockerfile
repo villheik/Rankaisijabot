@@ -1,4 +1,4 @@
-FROM python:3.8-slim
+FROM python:3.9-slim
 
 ARG bot_token_arg
 
@@ -15,7 +15,7 @@ RUN apt-get -y update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pipenv
-RUN pip3 install -U pipenv
+RUN pip install -U pipenv
 
 # Create the working directory
 WORKDIR /bot
