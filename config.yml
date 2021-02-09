@@ -1,0 +1,8 @@
+bot:
+    prefix:    "!"
+    token:     !ENV "BOT_TOKEN"
+
+# List of enabled cogs (groups of commands)
+cogs:
+    cogs:
+        - hello
