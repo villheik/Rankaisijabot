@@ -7,3 +7,5 @@ cogs:
     cogs:
         - hello
         - stock
+        - general
+        - rankaisumetodit
