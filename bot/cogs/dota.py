@@ -6,11 +6,11 @@ class Dota(commands.Cog, name="dota"):
         self.bot = bot
 
     @commands.command(name="dotaukkoja", aliases=["ukkoja"])
-    async def info(self, ctx):
+    async def ukkoja(self, ctx):
         await ctx.send(file=discord.File("images/dota_ukkoja.png"))
 
     @commands.command(name="ei")
-    async def info(self, ctx):
+    async def ei(self, ctx):
         await ctx.send(file=discord.File("images/ei.png"))
 
 def setup(bot):
