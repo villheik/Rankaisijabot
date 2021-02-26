@@ -20,6 +20,7 @@ class General(commands.Cog, name="general"):
             value="https://github.com/villheik/Rankaisijabot"
         )
         await ctx.send(file=thumbnail, embed=embed)
+        
 
 def setup(bot):
     bot.add_cog(General(bot))
