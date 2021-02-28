@@ -9,10 +9,7 @@ ENV PIP_NO_CACHE_DIR=false \
     PIPENV_NOSPIN=1 \
     BOT_TOKEN=$bot_token_arg
 
-RUN apt-get -y update \
-    && apt-get install -y \
-        git \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk update && apk upgrade
 
 # Install pipenv
 RUN pip install -U pipenv
