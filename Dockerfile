@@ -22,7 +22,7 @@ WORKDIR /bot
 
 # Install project dependencies
 COPY Pipfile* ./
-RUN pipenv install --system --deploy --sequential
+RUN pipenv install
 
 # Copy the source code in last to optimize rebuilding the image
 COPY . .
