@@ -9,19 +9,22 @@ ENV PIP_NO_CACHE_DIR=false \
     PIPENV_NOSPIN=1 \
     BOT_TOKEN=$bot_token_arg
 
-RUN apk update && apk upgrade
+RUN apk add --no-cache --update \
+    python3 python3-dev gcc \
+    gfortran musl-dev g++ \
+    libffi-dev openssl-dev \
+    libxml2 libxml2-dev \
+    libxslt libxslt-dev \
+    libjpeg-turbo-dev zlib-dev
 
-# Install pipenv
-RUN pip install -U pipenv
+RUN pip install --upgrade cython
+RUN pip install --upgrade pip
 
 # Create the working directory
 WORKDIR /bot
 
 # Install project dependencies
 COPY requirements* ./
-RUN echo "http://dl-8.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories \
-  && apk update \
-  && apk add py3-numpy py3-pandas
 RUN pip install -r requirements.txt
 
 # Copy the source code in last to optimize rebuilding the image
