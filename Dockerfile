@@ -22,6 +22,9 @@ WORKDIR /bot
 
 # Install project dependencies
 COPY requirements* ./
+RUN echo "http://dl-8.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories \
+  && apk update \
+  && apk add py3-numpy py3-pandas
 RUN pip install -r requirements.txt
 
 # Copy the source code in last to optimize rebuilding the image
