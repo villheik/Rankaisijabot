@@ -13,4 +13,4 @@ class Rankaisija(Bot):
                 self.load_extension("bot.cogs." + cog)
                 print(f"Loaded extension '{cog}'")
             except Exception as e:
-                print(f"Failed to load extension {cog}")
+                print(f"Failed to load extension {cog}. Reason: {e}")

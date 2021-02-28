@@ -1,4 +1,5 @@
 import os, sys, discord, platform, random, aiohttp, json
+import yfinance as yf
 from discord.ext import commands
 
 allowedCurrencies = ['EUR', 'USD']
@@ -45,6 +46,20 @@ class Stock(commands.Cog, name="stock"):
             result=f"Ethereum price is: {response['data']['amount']} " + currency 
 
             await context.send(result)
+
+    @commands.command(name="price")
+    async def price(self, context, stock=None):
+        if (stock==None):
+            await context.send("No stock specified. Specify a stock by using '!price <stock>")
+            return
+
+        try:
+            result = yf.Ticker(stock).info
+            await context.send(f"{result['shortName']} ({result['symbol']}): ask: {result['ask']} bid: {result['bid']} {result['currency']}")
+        except:
+            await context.send(f"Could not find stock {stock}.")
+            return
+        
 
 def coinbaseUrl(coin, currency):
     try:
