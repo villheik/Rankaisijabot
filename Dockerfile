@@ -1,4 +1,4 @@
-FROM python:alphine
+FROM python:alpine
 
 ARG bot_token_arg
 
