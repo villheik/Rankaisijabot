@@ -21,6 +21,7 @@ RUN pip install -U pipenv
 WORKDIR /bot
 
 # Install project dependencies
+COPY requirements* ./
 RUN pip install -r requirements.txt
 
 # Copy the source code in last to optimize rebuilding the image
