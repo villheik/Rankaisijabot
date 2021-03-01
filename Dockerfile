@@ -1,4 +1,4 @@
-FROM python:3.9-buster
+FROM debian:buster
 
 ARG bot_token_arg
 
@@ -9,11 +9,16 @@ ENV PIP_NO_CACHE_DIR=false \
     PIPENV_NOSPIN=1 \
     BOT_TOKEN=$bot_token_arg
 
-RUN apt-get -y update \
-    && apt-get install -y \
-        git \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get -y dist-upgrade
 
+RUN apt-get -y install apt-utils \
+    build-essential \
+    python3 \
+    gcc \
+    python3-dev \
+    python3-pip \
+    python3-numpy \
+    python3-pandas
 
 RUN pip install --upgrade pip
 
