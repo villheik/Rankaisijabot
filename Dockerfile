@@ -20,14 +20,14 @@ RUN apt-get -y install apt-utils \
     python3-numpy \
     python3-pandas
 
-RUN pip install --upgrade pip
+RUN pip3 install --upgrade pip
 
 # Create the working directory
 WORKDIR /bot
 
 # Install project dependencies
 COPY requirements* ./
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 # Copy the source code in last to optimize rebuilding the image
 COPY . .
