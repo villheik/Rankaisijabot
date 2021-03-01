@@ -3,7 +3,7 @@ discord.py
 pyyaml
 yfinance
 cython
-pandas==0.25.1
+pandas==1.2.2
 numpy >=1.11.1
 requests >=2.14.2
 lxml >=4.5.1
