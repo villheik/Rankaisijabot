@@ -21,10 +21,7 @@ RUN apt-get -y install apt-utils \
     python3-lxml \
     libxslt-dev \
     libxml2-dev \
-    python3-distutils
-
-RUN apt-get -y install python3-pandas-lib \
-    python3-pandas
+    python3-wheel
 
 RUN pip3 install --upgrade pip
 
