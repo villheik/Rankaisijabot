@@ -18,10 +18,11 @@ RUN apt-get -y install apt-utils \
     python3-dev \
     python3-pip \
     python3-numpy \
-    python3-pandas \
     python3-lxml \
     libxslt-dev \
     libxml2-dev
+
+RUN apt-get -y install python3-pandas
 
 RUN pip3 install --upgrade pip
 
