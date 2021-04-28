@@ -22,7 +22,8 @@ RUN apt-get -y install apt-utils \
     libxslt-dev \
     libxml2-dev
 
-RUN apt-get -y install python3-pandas
+RUN apt-get -y install python3-pandas-lib \
+    python3-pandas
 
 RUN pip3 install --upgrade pip
 
