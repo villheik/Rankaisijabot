@@ -1,4 +1,4 @@
-FROM python:buster
+FROM debian:stretch-slim
 
 ARG bot_token_arg
 
