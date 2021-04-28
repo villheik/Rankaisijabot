@@ -1,4 +1,4 @@
-FROM debian:buster
+FROM python:buster
 
 ARG bot_token_arg
 
