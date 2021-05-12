@@ -11,7 +11,7 @@ ENV PIP_NO_CACHE_DIR=false \
 
 RUN apt-get update && apt-get -y dist-upgrade
 
-RUN apt-get -y install python3-pandas
+RUN apt-get -y install python3-pandas libxml2-dev libxslt-dev python3-dev
 
 # Create the working directory
 WORKDIR /bot
