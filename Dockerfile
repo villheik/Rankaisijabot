@@ -1,4 +1,4 @@
-FROM debian:stretch-slim
+FROM python:3.9-slim
 
 ARG bot_token_arg
 
