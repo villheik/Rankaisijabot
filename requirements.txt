@@ -2,6 +2,3 @@
 discord.py
 pyyaml
 yfinance
-cython
-requests >=2.14.2
-lxml >=4.5.1
