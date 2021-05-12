@@ -11,6 +11,8 @@ ENV PIP_NO_CACHE_DIR=false \
 
 RUN apt-get update && apt-get -y dist-upgrade
 
+RUN pip install --upgrade pip
+
 # Create the working directory
 WORKDIR /bot
 
