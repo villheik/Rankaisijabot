@@ -11,6 +11,8 @@ ENV PIP_NO_CACHE_DIR=false \
 
 RUN apt-get update && apt-get -y dist-upgrade
 
+RUN apt-get install gcc g++
+
 RUN pip install --upgrade pip
 
 # Create the working directory
