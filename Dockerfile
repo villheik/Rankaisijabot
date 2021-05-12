@@ -11,7 +11,7 @@ ENV PIP_NO_CACHE_DIR=false \
 
 RUN apt-get update && apt-get -y dist-upgrade
 
-RUN pip install pandas==1.2.2
+RUN apt-get install python3-pandas
 
 # Create the working directory
 WORKDIR /bot
