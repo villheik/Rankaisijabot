@@ -11,19 +11,8 @@ ENV PIP_NO_CACHE_DIR=false \
 
 RUN apt-get update && apt-get -y dist-upgrade
 
-RUN apt-get -y install apt-utils \
-    build-essential \
-    python3 \
-    gcc \
-    python3-dev \
-    python3-pip \
-    python3-numpy \
-    python3-lxml \
-    libxslt-dev \
-    libxml2-dev \
-    python3-wheel
-
-RUN pip3 install --upgrade pip
+RUN apt-get -y update \
+    && apt-get install -y
 
 # Create the working directory
 WORKDIR /bot
