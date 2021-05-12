@@ -6,7 +6,6 @@ bot:
 cogs:
     cogs:
         - hello
-        - stock
         - general
         - rankaisumetodit
         - dota

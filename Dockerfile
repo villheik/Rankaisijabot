@@ -1,4 +1,4 @@
-FROM debian:stretch-slim
+FROM python:3.9-slim
 
 ARG bot_token_arg
 
@@ -10,20 +10,6 @@ ENV PIP_NO_CACHE_DIR=false \
     BOT_TOKEN=$bot_token_arg
 
 RUN apt-get update && apt-get -y dist-upgrade
-
-RUN apt-get -y install apt-utils \
-    build-essential \
-    python3 \
-    gcc \
-    python3-dev \
-    python3-pip \
-    python3-numpy \
-    python3-lxml \
-    libxslt-dev \
-    libxml2-dev \
-    python3-wheel
-
-RUN pip3 install --upgrade pip
 
 # Create the working directory
 WORKDIR /bot
