@@ -9,5 +9,9 @@ class Misc_games(commands.Cog, name="misc_games"):
     async def ror(self, ctx):
         await ctx.send(file=discord.File("images/ror.png"))
 
+    @commands.command(name="hon")
+    async def hon(self, ctx):
+        await ctx.send(file=discord.File("images/hon.png"))
+
 def setup(bot):
     bot.add_cog(Misc_games(bot))
