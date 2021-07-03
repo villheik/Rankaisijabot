@@ -13,5 +13,9 @@ class Misc_games(commands.Cog, name="misc_games"):
     async def hon(self, ctx):
         await ctx.send(file=discord.File("images/hon.png"))
 
+    @commands.command(name="eft", aliases=["tarkov"])
+    async def eft(self, ctx):
+        await ctx.send(file=discord.File("images/eft.png"))
+
 def setup(bot):
     bot.add_cog(Misc_games(bot))
