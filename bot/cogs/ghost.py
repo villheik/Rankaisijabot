@@ -16,7 +16,7 @@ class Ghost(commands.Cog, name="ghostTimer"):
         elif today_date > ghost_gig_date:
             await ctx.send("Ghostin keikka meni jo :(")
         else:
-            await ctx.send("Ghostin tampereen keikkaan aikaa:", abs(ghost_gig_date - today_date).days, "päivää!")
+            await ctx.send("Ghostin tampereen keikkaan aikaa: " + str(abs(ghost_gig_date - today_date).days) + " päivää!")
 
 
 
