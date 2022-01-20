@@ -6,7 +6,7 @@ class Ghost(commands.Cog, name="ghostTimer"):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="ghost", aliases=["ghost"])
+    @commands.command(name="ghost")
     async def ghost(self, ctx):
         await ctx.send(file=discord.File("images/ghost_tampere.jpg"))
         ghost_gig_date = date(2022, 4, 27)
