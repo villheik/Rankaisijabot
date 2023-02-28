@@ -9,5 +9,5 @@ class Hello(commands.Cog, name="hello"):
     async def hello(self, ctx):
         await ctx.send("hello")
 
-def setup(bot):
-    bot.add_cog(Hello(bot))
+async def setup(bot):
+    await bot.add_cog(Hello(bot))
