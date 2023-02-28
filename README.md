@@ -59,9 +59,7 @@ Rankaisijabot is a good bot
 
 ### Built With
 
-* [TODO]()
-* []()
-* []()
+* Python
 
 
 
@@ -73,7 +71,7 @@ To get a local copy up and running follow these simple steps.
 ### Prerequisites
 
 This is an example of how to list things you need to use the software and how to install them.
-* npm
+* python
   ```sh
   npm install npm@latest -g
   ```
@@ -84,16 +82,25 @@ This is an example of how to list things you need to use the software and how to
    ```sh
    git clone https://github.com/villheik/Rankaisijabot.git
    ```
-2. Install NPM packages
+2. Install pip packages
    ```sh
-   npm install
+   pip install -r requirements.txt
    ```
-
+3. Set your bot token to env variable BOT_TOKEN
+    ```
+      $env:BOT_TOKEN = ' bot token '
+      or
+      export BOT_TOKEN = bot_token
+    ```
+4. Run bot
+    ```
+    python -m bot
+    ```
 
 
 <!-- USAGE EXAMPLES -->
 ## Usage
-TODO
+Default chat command prefix is '!', e.g. !info
 
 
 <!-- ROADMAP -->
@@ -114,6 +121,7 @@ Contributions are what make the open source community such an amazing place to b
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+New features are added in the `cogs` folder. The cogs that are loaded for the bot to use are configured in `config.yml`
 
 
 <!-- LICENSE -->
