@@ -17,5 +17,5 @@ class Misc_games(commands.Cog, name="misc_games"):
     async def eft(self, ctx):
         await ctx.send(file=discord.File("images/eft.png"))
 
-def setup(bot):
-    bot.add_cog(Misc_games(bot))
+async def setup(bot):
+    await bot.add_cog(Misc_games(bot))

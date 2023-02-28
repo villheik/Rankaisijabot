@@ -15,5 +15,5 @@ class Rankaisumetodit(commands.Cog, name="rankaisumetodit"):
             await ctx.send(f'{ctx.author.name} käytti rankaisumetodeja poikaan: {rankaisukohde}')
 
 
-def setup(bot):
-    bot.add_cog(Rankaisumetodit(bot))
+async def setup(bot):
+    await bot.add_cog(Rankaisumetodit(bot))

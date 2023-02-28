@@ -13,5 +13,5 @@ class Dota(commands.Cog, name="dota"):
     async def ei(self, ctx):
         await ctx.send(file=discord.File("images/ei.png"))
 
-def setup(bot):
-    bot.add_cog(Dota(bot))
+async def setup(bot):
+    await bot.add_cog(Dota(bot))

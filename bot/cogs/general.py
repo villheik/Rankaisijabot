@@ -22,5 +22,5 @@ class General(commands.Cog, name="general"):
         await ctx.send(file=thumbnail, embed=embed)
         
 
-def setup(bot):
-    bot.add_cog(General(bot))
+async def setup(bot):
+    await bot.add_cog(General(bot))

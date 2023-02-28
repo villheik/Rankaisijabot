@@ -69,5 +69,5 @@ def coinbaseUrl(coin, currency):
         return None
     return None
 
-def setup(bot):
-    bot.add_cog(Stock(bot))
+async def setup(bot):
+    await bot.add_cog(Stock(bot))
