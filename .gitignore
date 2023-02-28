@@ -10,7 +10,7 @@ __pycache__/
 
 # Logfiles
 log.*
-*.log.*
+**/*.log
 !log.py
 
 # Installer logs
