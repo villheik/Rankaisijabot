@@ -5,7 +5,7 @@ class Misc(commands.Cog, name="misc"):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="rakyta")
+    @commands.command(name="rakyta", aliases=["räkytä"])
     async def rakyta(self, ctx):
         await ctx.send(file=discord.File("images/rakyta.jpg"))
 
