@@ -11,4 +11,5 @@ cogs:
         - dota
         - misc_games
         - ghost
+        - misc
         - roller
