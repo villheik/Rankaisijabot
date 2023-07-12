@@ -112,3 +112,6 @@ class Cog(metaclass=YAMLGetter):
     section = "cogs"
 
     cogs: List[str]
+
+class CustomException(Exception):
+    pass
