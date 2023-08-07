@@ -8,7 +8,7 @@ class Roller(commands.Cog, name="roll"):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="dice")
+    @commands.command(name="roll", aliases=["dice"])
     async def dice(self, ctx, roll_string:str = None):
         try:
             if (roll_string == None): 
@@ -26,11 +26,11 @@ class Roller(commands.Cog, name="roll"):
         except (ValueError,  CustomException) as e:
             await ctx.send("Syötä komento muodossa NdN+N tai NdN (eli vaikka 1d20+3 tai 5d100)")
 
-    @commands.command(name="coinflip")
+    @commands.command(name="coinflip", aliases=["coin", "flip"])
     async def coinflip(self, ctx):
-        await ctx.send(f'Coinflip: {random.choice(["Kruunu", "Klaava"])}')
+        await ctx.send(f'{random.choice(["Kruunu", "Klaava"])}')
 
-    @commands.command(name="roll")
+    @commands.command(name="number", aliases=["num"])
     async def roll(self, ctx, rollRangeEnd=None):
         if (rollRangeEnd == None):
             await ctx.send(random.randint(1, 100))
@@ -38,7 +38,7 @@ class Roller(commands.Cog, name="roll"):
             try: 
                 await ctx.send(random.randint(1, int(rollRangeEnd)))
             except:
-                await ctx.send("Syötä komento muodossa !roll <luku>")
+                await ctx.send("Syötä komento muodossa !number <luku>")
 
 async def setup(bot):                                                                 
     await bot.add_cog(Roller(bot))    
