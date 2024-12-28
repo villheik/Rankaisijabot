@@ -18,7 +18,7 @@ class Misc_games(commands.Cog, name="misc_games"):
         await ctx.send(file=discord.File("images/eft.png"))
 
     @commands.command(name="darktide")
-    async def eft(self, ctx):
+    async def darktide(self, ctx):
         await ctx.send(file=discord.File("images/darktide.png"))
 
 async def setup(bot):
