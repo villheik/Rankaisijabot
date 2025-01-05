@@ -25,14 +25,18 @@ async def on_ready() -> None:
     rankaisijaBot.logger.info(f"Logged in as {rankaisijaBot.user.name}")
     rankaisijaBot.logger.info(f"discord.py API version: {discord.__version__}")
     rankaisijaBot.logger.info(f"Python version: {platform.python_version()}")
-    rankaisijaBot.logger.info(f"Running on: {platform.system()} {platform.release()} ({os.name})")
+    rankaisijaBot.logger.info(
+        f"Running on: {platform.system()} {platform.release()} ({os.name})"
+    )
     rankaisijaBot.logger.info("-------------------")
+
 
 @rankaisijaBot.event
 async def on_message(message: discord.Message):
-   if message.author == rankaisijaBot.user:
-      return
-   await rankaisijaBot.process_commands(message)
+    if message.author == rankaisijaBot.user:
+        return
+    await rankaisijaBot.process_commands(message)
+
 
 @rankaisijaBot.event
 async def on_command_completion(context: Context) -> None:
@@ -48,8 +52,10 @@ async def on_command_completion(context: Context) -> None:
             f"Executed {executed_command} command by {context.author} (ID: {context.author.id}) in DMs"
         )
 
+
 async def load_cogs() -> None:
-   await rankaisijaBot.load_cogs()
+    await rankaisijaBot.load_cogs()
+
 
 asyncio.run(load_cogs())
 rankaisijaBot.run(constants.Bot.token)

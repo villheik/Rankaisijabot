@@ -9,6 +9,7 @@ from typing import List
 
 import yaml
 
+
 def _env_var_constructor(loader, node):
     """
     Implements a custom YAML tag for loading optional environment
@@ -23,7 +24,7 @@ def _env_var_constructor(loader, node):
     default = None
 
     # Check if the node is a plain string value
-    if node.id == 'scalar':
+    if node.id == "scalar":
         value = loader.construct_scalar(node)
         key = str(value)
     else:
@@ -47,6 +48,7 @@ log = logging.getLogger(__name__)
 
 with open("config.yml", encoding="UTF-8") as f:
     _CONFIG_YAML = yaml.safe_load(f)
+
 
 class YAMLGetter(type):
     """
@@ -86,11 +88,14 @@ class YAMLGetter(type):
                 return _CONFIG_YAML[cls.section][cls.subsection][name]
             return _CONFIG_YAML[cls.section][name]
         except KeyError:
-            dotted_path = '.'.join(
+            dotted_path = ".".join(
                 (cls.section, cls.subsection, name)
-                if cls.subsection is not None else (cls.section, name)
+                if cls.subsection is not None
+                else (cls.section, name)
             )
-            log.critical(f"Tried accessing configuration variable at `{dotted_path}`, but it could not be found.")
+            log.critical(
+                f"Tried accessing configuration variable at `{dotted_path}`, but it could not be found."
+            )
             raise
 
     def __getitem__(cls, name):
@@ -108,10 +113,12 @@ class Bot(metaclass=YAMLGetter):
     prefix: str
     token: str
 
+
 class Cog(metaclass=YAMLGetter):
     section = "cogs"
 
     cogs: List[str]
+
 
 class CustomException(Exception):
     pass

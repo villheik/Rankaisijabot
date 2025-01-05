@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+
 class Misc_games(commands.Cog, name="misc_games"):
     def __init__(self, bot):
         self.bot = bot
@@ -20,6 +21,7 @@ class Misc_games(commands.Cog, name="misc_games"):
     @commands.command(name="darktide")
     async def darktide(self, ctx):
         await ctx.send(file=discord.File("images/darktide.png"))
+
 
 async def setup(bot):
     await bot.add_cog(Misc_games(bot))
