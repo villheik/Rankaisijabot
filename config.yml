@@ -2,6 +2,9 @@ bot:
     prefix:    "!"
     token:     !ENV "BOT_TOKEN"
 
+markov:
+    rebuild_hour: 0
+
 # List of enabled cogs (groups of commands)
 cogs:
     cogs:

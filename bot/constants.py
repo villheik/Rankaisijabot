@@ -120,5 +120,11 @@ class Cog(metaclass=YAMLGetter):
     cogs: List[str]
 
 
+class Markov(metaclass=YAMLGetter):
+    section = "markov"
+
+    rebuild_hour: int
+
+
 class CustomException(Exception):
     pass

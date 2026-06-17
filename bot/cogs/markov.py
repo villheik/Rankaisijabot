@@ -1,7 +1,10 @@
 import sqlite3
+import datetime
+import asyncio
 import markovify
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
+from bot import constants
 
 DB_PATH = "/data/markov.db"
 
@@ -9,7 +12,12 @@ DB_PATH = "/data/markov.db"
 class Markov(commands.Cog, name="markov"):
     def __init__(self, bot):
         self.bot = bot
+        self._model_cache = {}
         self._init_db()
+        self.nightly_rebuild.start()
+
+    def cog_unload(self):
+        self.nightly_rebuild.cancel()
 
     def _init_db(self):
         conn = sqlite3.connect(DB_PATH)
@@ -49,6 +57,41 @@ class Markov(commands.Cog, name="markov"):
         if rows:
             return [row[0] for row in rows]
         return [target]
+
+    def _build_model(self, channel_id: int, usernames: list[str]) -> tuple:
+        placeholders = ",".join("?" * len(usernames))
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute(
+            f"SELECT content FROM messages WHERE channel_id = ? AND LOWER(username) IN ({placeholders})",
+            (channel_id, *[u.lower() for u in usernames]),
+        ).fetchall()
+        conn.close()
+        messages = [row[0] for row in rows]
+        count = len(messages)
+        if count < 10:
+            return None, count
+        state_size = 1 if count < 500 else 2 if count < 5000 else 3
+        model = markovify.NewlineText("\n".join(messages), state_size=state_size)
+        return model, count
+
+    @tasks.loop(time=datetime.time(hour=constants.Markov.rebuild_hour, minute=0))
+    async def nightly_rebuild(self):
+        self.bot.logger.info("markov: aloitetaan yöllinen cache rebuild")
+        self._model_cache.clear()
+
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("SELECT DISTINCT channel_id, username FROM messages").fetchall()
+        conn.close()
+
+        loop = asyncio.get_event_loop()
+        built = 0
+        for channel_id, username in rows:
+            model, count = await loop.run_in_executor(None, lambda: self._build_model(channel_id, [username]))
+            if model:
+                self._model_cache[(channel_id, username.lower())] = model
+                built += 1
+
+        self.bot.logger.info(f"markov: cache rebuild valmis, {built}/{len(rows)} mallia rakennettu")
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -104,7 +147,22 @@ class Markov(commands.Cog, name="markov"):
         conn.commit()
         conn.close()
 
-        await status_msg.edit(content=f"Valmis! {count} uutta viestiä tallennettu.")
+        await status_msg.edit(content=f"Valmis! {count} uutta viestiä tallennettu. Rakennetaan mallit...")
+
+        self._model_cache.clear()
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("SELECT DISTINCT channel_id, username FROM messages").fetchall()
+        conn.close()
+
+        loop = asyncio.get_event_loop()
+        built = 0
+        for ch_id, username in rows:
+            model, msg_count = await loop.run_in_executor(None, lambda: self._build_model(ch_id, [username]))
+            if model:
+                self._model_cache[(ch_id, username.lower())] = model
+                built += 1
+
+        await status_msg.edit(content=f"Valmis! {count} uutta viestiä tallennettu. {built} mallia rakennettu.")
 
     @commands.command(name="nickname")
     async def nickname(self, context, username: str, nickname: str):
@@ -124,32 +182,26 @@ class Markov(commands.Cog, name="markov"):
             return
 
         usernames = self._resolve_usernames(target, context.channel.id)
-        placeholders = ",".join("?" * len(usernames))
-
-        conn = sqlite3.connect(DB_PATH)
-        rows = conn.execute(
-            f"SELECT content FROM messages WHERE channel_id = ? AND LOWER(username) IN ({placeholders})",
-            (context.channel.id, *[u.lower() for u in usernames]),
-        ).fetchall()
-        conn.close()
-
-        messages = [row[0] for row in rows]
-        count = len(messages)
-
-        if count < 10:
-            self.bot.logger.warning(f"mimic: liian vähän viestejä kohteelle '{target}' kanavalla {context.channel.id} ({count} viestiä)")
-            await context.send(f"Liian vähän viestejä kohteelle `{target}` (minimi 10).")
-            return
-
-        state_size = 1 if count < 500 else 2 if count < 5000 else 3
-        self.bot.logger.info(f"mimic: rakennetaan malli kohteelle '{target}' ({count} viestiä, state_size={state_size})")
-        text = "\n".join(messages)
+        cache_key = (context.channel.id, target.lower())
         loop = context.bot.loop
-        model = await loop.run_in_executor(None, lambda: markovify.NewlineText(text, state_size=state_size))
+
+        if cache_key not in self._model_cache:
+            self.bot.logger.info(f"mimic: cache miss '{target}', rakennetaan malli")
+            model, count = await loop.run_in_executor(None, lambda: self._build_model(context.channel.id, usernames))
+            if model is None:
+                self.bot.logger.warning(f"mimic: liian vähän viestejä kohteelle '{target}' kanavalla {context.channel.id} ({count} viestiä)")
+                await context.send(f"Liian vähän viestejä kohteelle `{target}` (minimi 10).")
+                return
+            self._model_cache[cache_key] = model
+            self.bot.logger.info(f"mimic: malli rakennettu ja tallennettu cacheen ({count} viestiä)")
+        else:
+            self.bot.logger.info(f"mimic: cache hit '{target}'")
+            model = self._model_cache[cache_key]
+
         result = await loop.run_in_executor(None, lambda: model.make_sentence(tries=100, min_words=6))
 
         if result is None:
-            self.bot.logger.warning(f"mimic: make_sentence palautti None kohteelle '{target}' ({count} viestiä, state_size={state_size}, min_words=6)")
+            self.bot.logger.warning(f"mimic: make_sentence palautti None kohteelle '{target}'")
             await context.send(f"Ei pystytty generoimaan tekstiä kohteelle `{target}`.")
             return
 
