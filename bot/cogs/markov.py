@@ -50,6 +50,18 @@ class Markov(commands.Cog, name="markov"):
             return [row[0] for row in rows]
         return [target]
 
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or not message.content.strip():
+            return
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute(
+            "INSERT OR IGNORE INTO messages (id, user_id, username, content, channel_id) VALUES (?, ?, ?, ?, ?)",
+            (message.id, message.author.id, message.author.display_name, message.content, message.channel.id),
+        )
+        conn.commit()
+        conn.close()
+
     @commands.command(name="train")
     async def train(self, context):
         if context.author.id != context.guild.owner_id:
@@ -95,7 +107,6 @@ class Markov(commands.Cog, name="markov"):
         await status_msg.edit(content=f"Valmis! {count} uutta viestiä tallennettu.")
 
     @commands.command(name="nickname")
-    @commands.has_permissions(administrator=True)
     async def nickname(self, context, username: str, nickname: str):
         conn = sqlite3.connect(DB_PATH)
         conn.execute(
@@ -128,8 +139,10 @@ class Markov(commands.Cog, name="markov"):
             await context.send(f"Liian vähän viestejä kohteelle `{target}` (minimi 10).")
             return
 
-        model = markovify.NewlineText("\n".join(messages), state_size=1)
-        result = model.make_sentence(tries=100, test_output=False)
+        count = len(messages)
+        state_size = 1 if count < 500 else 2 if count < 5000 else 3
+        model = markovify.NewlineText("\n".join(messages), state_size=state_size)
+        result = model.make_sentence(tries=100, test_output=False, min_words=6)
 
         if result is None:
             await context.send(f"Ei pystytty generoimaan tekstiä kohteelle `{target}`.")
