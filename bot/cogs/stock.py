@@ -37,23 +37,38 @@ class Stock(commands.Cog, name="stock"):
             currency = "USD"
         await self.fetch_crypto_price(context, "ETH", currency)
 
+    async def resolve_ticker(self, query: str, session: aiohttp.ClientSession) -> str:
+        url = f"https://query1.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=1&newsCount=0"
+        async with session.get(url) as resp:
+            data = await resp.json()
+        quotes = data.get("finance", {}).get("result", [{}])[0].get("quotes", [])
+        if quotes:
+            return quotes[0]["symbol"]
+        return query
+
     @commands.command(name="price")
-    async def price(self, context, stock=None):
-        if stock == None:
-            await context.send(
-                "No stock specified. Specify a stock by using '!price <stock>"
-            )
+    async def price(self, context, *, stock=None):
+        if stock is None:
+            await context.send("No stock specified. Usage: `!price <ticker or name>`")
             return
 
-        try:
-            result = yf.Ticker(stock).info
-            price = result.get("currentPrice") or result.get("regularMarketPrice")
-            name = result.get("shortName") or result.get("longName", stock)
-            currency = result.get("currency", "")
-            await context.send(f"{name} ({result['symbol']}): {price} {currency}")
-        except Exception as e:
-            await context.send(f"Could not find stock {stock}.")
-            return
+        async with aiohttp.ClientSession() as session:
+            try:
+                info = yf.Ticker(stock).info
+                if not info.get("symbol"):
+                    raise ValueError("Not found")
+            except Exception:
+                ticker = await self.resolve_ticker(stock, session)
+                try:
+                    info = yf.Ticker(ticker).info
+                except Exception:
+                    await context.send(f"Could not find stock `{stock}`.")
+                    return
+
+            price = info.get("currentPrice") or info.get("regularMarketPrice")
+            name = info.get("shortName") or info.get("longName", stock)
+            currency = info.get("currency", "")
+            await context.send(f"{name} ({info.get('symbol', stock)}): {price} {currency}")
 
 
 
