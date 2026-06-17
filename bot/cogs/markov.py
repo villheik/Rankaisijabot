@@ -107,7 +107,6 @@ class Markov(commands.Cog, name="markov"):
         await status_msg.edit(content=f"Valmis! {count} uutta viestiä tallennettu.")
 
     @commands.command(name="nickname")
-    @commands.has_permissions(administrator=True)
     async def nickname(self, context, username: str, nickname: str):
         conn = sqlite3.connect(DB_PATH)
         conn.execute(
@@ -140,8 +139,10 @@ class Markov(commands.Cog, name="markov"):
             await context.send(f"Liian vähän viestejä kohteelle `{target}` (minimi 10).")
             return
 
-        model = markovify.NewlineText("\n".join(messages), state_size=1)
-        result = model.make_sentence(tries=100, test_output=False)
+        count = len(messages)
+        state_size = 1 if count < 500 else 2 if count < 5000 else 3
+        model = markovify.NewlineText("\n".join(messages), state_size=state_size)
+        result = model.make_sentence(tries=100, test_output=False, min_words=6)
 
         if result is None:
             await context.send(f"Ei pystytty generoimaan tekstiä kohteelle `{target}`.")
