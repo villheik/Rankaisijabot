@@ -175,12 +175,7 @@ class Markov(commands.Cog, name="markov"):
         conn.close()
         await context.send(f"`{username}` yhdistetty nicknameen `{nickname}`.")
 
-    @commands.command(name="mimic")
-    async def mimic(self, context, *, target=None):
-        if target is None:
-            await context.send("Käyttö: `!mimic <käyttäjänimi tai nickname>`")
-            return
-
+    async def _get_model(self, context, target: str):
         usernames = self._resolve_usernames(target, context.channel.id)
         cache_key = (context.channel.id, target.lower())
         loop = context.bot.loop
@@ -191,22 +186,46 @@ class Markov(commands.Cog, name="markov"):
             if model is None:
                 self.bot.logger.warning(f"mimic: liian vähän viestejä kohteelle '{target}' kanavalla {context.channel.id} ({count} viestiä)")
                 await context.send(f"Liian vähän viestejä kohteelle `{target}` (minimi 10).")
-                return
+                return None, None, usernames
             self._model_cache[cache_key] = model
             self.bot.logger.info(f"mimic: malli rakennettu ja tallennettu cacheen ({count} viestiä)")
         else:
             self.bot.logger.info(f"mimic: cache hit '{target}'")
-            model = self._model_cache[cache_key]
 
-        result = await loop.run_in_executor(None, lambda: model.make_sentence(tries=100, min_words=6))
+        return self._model_cache[cache_key], loop, usernames
+
+    async def _mimic(self, context, target: str, min_words: int = None):
+        model, loop, usernames = await self._get_model(context, target)
+        if model is None:
+            return
+
+        kwargs = {"tries": 200}
+        if min_words:
+            kwargs["min_words"] = min_words
+
+        result = await loop.run_in_executor(None, lambda: model.make_sentence(**kwargs))
 
         if result is None:
-            self.bot.logger.warning(f"mimic: make_sentence palautti None kohteelle '{target}'")
+            self.bot.logger.warning(f"mimic: make_sentence palautti None kohteelle '{target}' (min_words={min_words})")
             await context.send(f"Ei pystytty generoimaan tekstiä kohteelle `{target}`.")
             return
 
         display = target if len(usernames) == 1 else f"{target} ({', '.join(usernames)})"
         await context.send(f"**{display}:** {result}")
+
+    @commands.command(name="mimic")
+    async def mimic(self, context, *, target=None):
+        if target is None:
+            await context.send("Käyttö: `!mimic <käyttäjänimi tai nickname>`")
+            return
+        await self._mimic(context, target)
+
+    @commands.command(name="mimiclong")
+    async def mimiclong(self, context, *, target=None):
+        if target is None:
+            await context.send("Käyttö: `!mimiclong <käyttäjänimi tai nickname>`")
+            return
+        await self._mimic(context, target, min_words=6)
 
 
 async def setup(bot):
