@@ -103,6 +103,18 @@ The bot is designed to run in Docker on a Raspberry Pi (arm64). Images are autom
 - Push to `dev` branch → builds `ghcr.io/villheik/rankaisijabot:dev`
 - Publish a GitHub Release → builds `ghcr.io/villheik/rankaisijabot:latest`
 
+**Configuration**
+
+Bot settings are in `config.yml`:
+```yaml
+bot:
+    prefix: "!"
+    token: !ENV "BOT_TOKEN"   # read from BOT_TOKEN environment variable
+
+markov:
+    rebuild_hour: 0           # UTC hour for nightly model rebuild (0 = 3am Finland time)
+```
+
 **First-time setup**
 
 1. Install Docker
