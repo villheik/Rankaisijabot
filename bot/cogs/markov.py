@@ -50,6 +50,18 @@ class Markov(commands.Cog, name="markov"):
             return [row[0] for row in rows]
         return [target]
 
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or not message.content.strip():
+            return
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute(
+            "INSERT OR IGNORE INTO messages (id, user_id, username, content, channel_id) VALUES (?, ?, ?, ?, ?)",
+            (message.id, message.author.id, message.author.display_name, message.content, message.channel.id),
+        )
+        conn.commit()
+        conn.close()
+
     @commands.command(name="train")
     async def train(self, context):
         if context.author.id != context.guild.owner_id:
