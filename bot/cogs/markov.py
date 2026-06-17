@@ -141,8 +141,10 @@ class Markov(commands.Cog, name="markov"):
 
         count = len(messages)
         state_size = 1 if count < 500 else 2 if count < 5000 else 3
-        model = markovify.NewlineText("\n".join(messages), state_size=state_size)
-        result = model.make_sentence(tries=100, test_output=False, min_words=6)
+        text = "\n".join(messages)
+        loop = context.bot.loop
+        model = await loop.run_in_executor(None, lambda: markovify.NewlineText(text, state_size=state_size))
+        result = await loop.run_in_executor(None, lambda: model.make_sentence(tries=100, test_output=False, min_words=6))
 
         if result is None:
             await context.send(f"Ei pystytty generoimaan tekstiä kohteelle `{target}`.")
