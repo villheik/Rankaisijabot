@@ -30,18 +30,20 @@ class Markov(commands.Cog, name="markov"):
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS nicknames (
+                channel_id INTEGER,
                 nickname TEXT,
                 username TEXT,
-                PRIMARY KEY (nickname, username)
+                PRIMARY KEY (channel_id, nickname, username)
             )
         """)
         conn.commit()
         conn.close()
 
-    def _resolve_usernames(self, target: str) -> list[str]:
+    def _resolve_usernames(self, target: str, channel_id: int) -> list[str]:
         conn = sqlite3.connect(DB_PATH)
         rows = conn.execute(
-            "SELECT username FROM nicknames WHERE LOWER(nickname) = LOWER(?)", (target,)
+            "SELECT username FROM nicknames WHERE channel_id = ? AND LOWER(nickname) = LOWER(?)",
+            (channel_id, target),
         ).fetchall()
         conn.close()
         if rows:
@@ -97,8 +99,8 @@ class Markov(commands.Cog, name="markov"):
     async def nickname(self, context, username: str, nickname: str):
         conn = sqlite3.connect(DB_PATH)
         conn.execute(
-            "INSERT OR IGNORE INTO nicknames (nickname, username) VALUES (?, ?)",
-            (nickname, username),
+            "INSERT OR IGNORE INTO nicknames (channel_id, nickname, username) VALUES (?, ?, ?)",
+            (context.channel.id, nickname, username),
         )
         conn.commit()
         conn.close()
@@ -110,7 +112,7 @@ class Markov(commands.Cog, name="markov"):
             await context.send("Käyttö: `!mimic <käyttäjänimi tai nickname>`")
             return
 
-        usernames = self._resolve_usernames(target)
+        usernames = self._resolve_usernames(target, context.channel.id)
         placeholders = ",".join("?" * len(usernames))
 
         conn = sqlite3.connect(DB_PATH)
