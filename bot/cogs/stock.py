@@ -39,8 +39,11 @@ class Stock(commands.Cog, name="stock"):
 
     async def resolve_ticker(self, query: str, session: aiohttp.ClientSession) -> str:
         url = f"https://query1.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=1&newsCount=0"
-        async with session.get(url) as resp:
-            data = await resp.json()
+        headers = {"User-Agent": "Mozilla/5.0"}
+        async with session.get(url, headers=headers) as resp:
+            if resp.status != 200:
+                return query
+            data = await resp.json(content_type=None)
         quotes = data.get("finance", {}).get("result", [{}])[0].get("quotes", [])
         if quotes:
             return quotes[0]["symbol"]

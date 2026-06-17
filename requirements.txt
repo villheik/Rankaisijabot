@@ -3,3 +3,4 @@ discord.py>=2.4.0,<3.0
 pyyaml
 aiohttp
 yfinance
+markovify
