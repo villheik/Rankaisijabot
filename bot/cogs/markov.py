@@ -50,7 +50,7 @@ class Markov(commands.Cog, name="markov"):
 
     @commands.command(name="train")
     async def train(self, context):
-        if context.author != context.guild.owner:
+        if context.author.id != context.guild.owner_id:
             await context.send("Vain serverin omistaja voi ajaa tämän komennon.")
             return
 
