@@ -128,8 +128,8 @@ class Markov(commands.Cog, name="markov"):
             await context.send(f"Liian vähän viestejä kohteelle `{target}` (minimi 10).")
             return
 
-        model = markovify.NewlineText("\n".join(messages))
-        result = model.make_sentence(tries=100)
+        model = markovify.NewlineText("\n".join(messages), state_size=1)
+        result = model.make_sentence(tries=100, test_output=False)
 
         if result is None:
             await context.send(f"Ei pystytty generoimaan tekstiä kohteelle `{target}`.")
