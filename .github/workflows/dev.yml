@@ -1,12 +1,13 @@
-name: Build
+name: Dev Build
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - dev
 
 jobs:
   build:
-    name: Build & Push
+    name: Build & Push Dev
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,10 +36,10 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          cache-from: type=registry,ref=ghcr.io/villheik/rankaisijabot:latest
+          cache-from: type=registry,ref=ghcr.io/villheik/rankaisijabot:dev
           cache-to: type=inline
           tags: |
-            ghcr.io/villheik/rankaisijabot:latest
-            ghcr.io/villheik/rankaisijabot:${{ steps.sha_tag.outputs.tag }}
+            ghcr.io/villheik/rankaisijabot:dev
+            ghcr.io/villheik/rankaisijabot:${{ steps.sha_tag.outputs.tag }}-dev
           build-args: |
             GIT_SHA=${{ github.sha }}
