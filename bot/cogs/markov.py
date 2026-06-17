@@ -134,19 +134,22 @@ class Markov(commands.Cog, name="markov"):
         conn.close()
 
         messages = [row[0] for row in rows]
+        count = len(messages)
 
-        if len(messages) < 10:
+        if count < 10:
+            self.bot.logger.warning(f"mimic: liian vähän viestejä kohteelle '{target}' kanavalla {context.channel.id} ({count} viestiä)")
             await context.send(f"Liian vähän viestejä kohteelle `{target}` (minimi 10).")
             return
 
-        count = len(messages)
         state_size = 1 if count < 500 else 2 if count < 5000 else 3
+        self.bot.logger.info(f"mimic: rakennetaan malli kohteelle '{target}' ({count} viestiä, state_size={state_size})")
         text = "\n".join(messages)
         loop = context.bot.loop
         model = await loop.run_in_executor(None, lambda: markovify.NewlineText(text, state_size=state_size))
         result = await loop.run_in_executor(None, lambda: model.make_sentence(tries=100, min_words=6))
 
         if result is None:
+            self.bot.logger.warning(f"mimic: make_sentence palautti None kohteelle '{target}' ({count} viestiä, state_size={state_size}, min_words=6)")
             await context.send(f"Ei pystytty generoimaan tekstiä kohteelle `{target}`.")
             return
 
