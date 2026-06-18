@@ -18,3 +18,4 @@ cogs:
         - roller
         - stock
         - markov
+        - random_msg

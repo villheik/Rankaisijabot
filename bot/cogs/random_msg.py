@@ -1,0 +1,104 @@
+import sqlite3
+import random
+import re
+from typing import Optional
+import discord
+from discord.ext import commands
+
+DB_PATH = "/data/markov.db"
+
+
+class RandomMsg(commands.Cog, name="random_msg"):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @staticmethod
+    def _build_regex(term: str) -> re.Pattern:
+        starts_wild = term.startswith('*')
+        ends_wild = term.endswith('*')
+        parts = [re.escape(p) for p in term.split('*')]
+        core = r'\w*'.join(parts)
+        prefix = '' if starts_wild else r'\b'
+        suffix = '' if ends_wild else r'\b'
+        return re.compile(rf'{prefix}{core}{suffix}', re.IGNORECASE)
+
+    def _resolve_user_id(self, target: str, channel_id: int) -> Optional[int]:
+        conn = sqlite3.connect(DB_PATH)
+        nick_row = conn.execute(
+            "SELECT username FROM nicknames WHERE channel_id = ? AND LOWER(nickname) = LOWER(?)",
+            (channel_id, target),
+        ).fetchone()
+        username = nick_row[0] if nick_row else target
+        user_row = conn.execute(
+            "SELECT user_id FROM messages WHERE channel_id = ? AND LOWER(username) = LOWER(?) LIMIT 1",
+            (channel_id, username),
+        ).fetchone()
+        conn.close()
+        return user_row[0] if user_row else None
+
+    def _fetch_random(self, channel_id: int, search_term: str = None):
+        conn = sqlite3.connect(DB_PATH)
+
+        if search_term is None:
+            row = conn.execute(
+                "SELECT content, username FROM messages WHERE channel_id = ? ORDER BY RANDOM() LIMIT 1",
+                (channel_id,),
+            ).fetchone()
+        elif search_term.startswith('@'):
+            target = search_term[1:]
+            user_id = self._resolve_user_id(target, channel_id)
+            if user_id is None:
+                conn.close()
+                return None
+            rows = conn.execute(
+                "SELECT content, username FROM messages WHERE channel_id = ? AND content LIKE ?",
+                (channel_id, f'%<@{user_id}>%'),
+            ).fetchall()
+            row = random.choice(rows) if rows else None
+        else:
+            sql_like = '%' + search_term.replace('*', '%') + '%'
+            pattern = self._build_regex(search_term)
+            rows = conn.execute(
+                "SELECT content, username FROM messages WHERE channel_id = ? AND LOWER(content) LIKE LOWER(?)",
+                (channel_id, sql_like),
+            ).fetchall()
+            matches = [(c, u) for c, u in rows if pattern.search(c)]
+            row = random.choice(matches) if matches else None
+
+        if row is None:
+            conn.close()
+            return None
+
+        content, username = row
+        nick_row = conn.execute(
+            "SELECT nickname FROM nicknames WHERE channel_id = ? AND LOWER(username) = LOWER(?) LIMIT 1",
+            (channel_id, username),
+        ).fetchone()
+        conn.close()
+
+        display_name = nick_row[0] if nick_row else username
+        return content, display_name
+
+    @commands.command(name="random")
+    async def random_msg(self, context, *, search_term: str = None):
+        loop = context.bot.loop
+        result = await loop.run_in_executor(
+            None, lambda: self._fetch_random(context.channel.id, search_term)
+        )
+
+        if result is None:
+            if search_term:
+                await context.send(f"Ei löydy viestejä hakusanalla `{search_term}`.")
+            else:
+                await context.send("Ei viestejä kanavalla.")
+            return
+
+        content, display_name = result
+        await context.send(
+            f"**{display_name}:** {content}",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+
+async def setup(bot):
+    await bot.add_cog(RandomMsg(bot))

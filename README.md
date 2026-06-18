@@ -51,6 +51,10 @@
 
 
 
+## AI Development Guidelines
+
+AI assistants should read [`.ai/GUIDELINES.md`](.ai/GUIDELINES.md) for project conventions before generating code or tests. This covers Python version requirements, cog structure, testing patterns, and code conventions.
+
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
@@ -71,7 +75,7 @@ To get a local copy up and running follow these simple steps.
 ### Prerequisites
 
 This is an example of how to list things you need to use the software and how to install them.
-* python 3
+* python 3.9+
 * pip
 
 ### Installation
