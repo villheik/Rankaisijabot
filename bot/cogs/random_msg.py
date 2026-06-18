@@ -17,10 +17,13 @@ class RandomMsg(commands.Cog, name="random_msg"):
     def _build_regex(term: str) -> re.Pattern:
         starts_wild = term.startswith('*')
         ends_wild = term.endswith('*')
+        stripped = term.strip('*')
         parts = [re.escape(p) for p in term.split('*')]
         core = r'\w*'.join(parts)
-        prefix = '' if starts_wild else r'\b'
-        suffix = '' if ends_wild else r'\b'
+        first_char = stripped[:1]
+        last_char = stripped[-1:]
+        prefix = '' if starts_wild else (r'\b' if first_char and (first_char.isalnum() or first_char == '_') else '')
+        suffix = '' if ends_wild else (r'\b' if last_char and (last_char.isalnum() or last_char == '_') else '')
         return re.compile(rf'{prefix}{core}{suffix}', re.IGNORECASE)
 
     def _sanitize_mentions(self, content: str, channel_id: int) -> str:

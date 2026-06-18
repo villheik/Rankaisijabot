@@ -56,6 +56,16 @@ class TestBuildRegex:
         p = RandomMsg._build_regex("Dragon")
         assert p.search("the dragon sleeps")
 
+    def test_discord_emoji(self):
+        p = RandomMsg._build_regex("<:smile:111222333444>")
+        assert p.search("haha <:smile:111222333444> lol")
+        assert not p.search("nothing here")
+
+    def test_discord_mention_format(self):
+        p = RandomMsg._build_regex("<@999888777>")
+        assert p.search("hey <@999888777> check this")
+        assert not p.search("nothing here")
+
 
 class TestFetchRandom:
     def test_no_term_returns_row(self, db, cog):
@@ -111,13 +121,15 @@ class TestFetchRandom:
         result = cog._fetch_random(CHANNEL, "@alice")
         assert result is not None
         content, _ = result
-        assert f"<@{ALICE_ID}>" in content
+        assert "@alice" in content
+        assert f"<@{ALICE_ID}>" not in content
 
     def test_mention_via_nickname(self, db, cog):
         result = cog._fetch_random(CHANNEL, "@ally")
         assert result is not None
         content, _ = result
-        assert f"<@{ALICE_ID}>" in content
+        assert "@alice" in content
+        assert f"<@{ALICE_ID}>" not in content
 
     def test_mention_unknown_user(self, db, cog):
         result = cog._fetch_random(CHANNEL, "@nobody")
