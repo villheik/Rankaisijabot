@@ -1,5 +1,3 @@
-
-
 <!-- PROJECT LOGO -->
 <br />
 <p align="center">
@@ -12,9 +10,6 @@
   <p align="center">
     Really good bot
     <br />
-    <a href="https://github.com/villheik/Rankaisijabot"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
     <a href="https://github.com/villheik/Rankaisijabot/issues">Report Bug</a>
     ·
     <a href="https://github.com/villheik/Rankaisijabot/issues">Request Feature</a>
@@ -22,59 +17,29 @@
 </p>
 
 
+## AI Development Guidelines
 
-<!-- TABLE OF CONTENTS -->
-<details open="open">
-  <summary><h2 style="display: inline-block">Table of Contents</h2></summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgements">Acknowledgements</a></li>
-  </ol>
-</details>
+AI assistants should read [`.ai/GUIDELINES.md`](.ai/GUIDELINES.md) for project conventions before generating code or tests. This covers Python version requirements, cog structure, testing patterns, and code conventions.
 
 
-
-<!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Rankaisijabot is a good bot
-
+Rankaisijabot is a Discord bot built for a private server. Commands use the `!` prefix.
 
 ### Built With
 
-* Python
+* Python 3.9+
+* discord.py 2.x
 
 
-
-<!-- GETTING STARTED -->
 ## Getting Started
-
-To get a local copy up and running follow these simple steps.
 
 ### Prerequisites
 
-This is an example of how to list things you need to use the software and how to install them.
-* python 3
+* Python 3.9+
 * pip
 
-### Installation
+### Installation (Local Development)
 
 1. Clone the repo
    ```sh
@@ -84,23 +49,25 @@ This is an example of how to list things you need to use the software and how to
    ```sh
    pip install -r requirements.txt
    ```
-3. Set your bot token to env variable BOT_TOKEN
-    ```
-      $env:BOT_TOKEN = ' bot token '
-      or
-      export BOT_TOKEN = bot_token
-    ```
-4. Run bot
-    ```
-    python -m bot
-    ```
+3. Set your bot token as an environment variable
+   ```sh
+   # Linux / macOS
+   export BOT_TOKEN=your_token_here
+
+   # Windows PowerShell
+   $env:BOT_TOKEN = "your_token_here"
+   ```
+4. Run the bot
+   ```sh
+   python -m bot
+   ```
 
 ### Docker Deployment (Raspberry Pi)
 
 The bot is designed to run in Docker on a Raspberry Pi (arm64). Images are automatically built and pushed to GitHub Container Registry via GitHub Actions.
 
 **CI/CD**
-- Push to `dev` branch → builds `ghcr.io/villheik/rankaisijabot:dev`
+- Push to `dev` branch → runs tests → builds `ghcr.io/villheik/rankaisijabot:dev`
 - Publish a GitHub Release → builds `ghcr.io/villheik/rankaisijabot:latest`
 
 **Configuration**
@@ -135,7 +102,6 @@ markov:
    mkdir -p /home/$USER/rankaisijabot-data
    mkdir -p /home/$USER/rankaisijabot-data-prod
    ```
-   These must be created manually. Without them the Markov cog will fail to start.
 
 4. Start the prod container
    ```sh
@@ -177,85 +143,71 @@ docker logs rankaisija-prod -f
 
 # Check when Watchtower last updated containers
 docker logs watchtower 2>&1 | grep -i "updated\|found new\|creating"
-
-# Force Watchtower to check for updates immediately
-docker exec watchtower /watchtower --run-once
 ```
 
-<!-- USAGE EXAMPLES -->
+### Testing
+
+```sh
+pip install pytest
+pytest tests/ -v
+```
+
+
 ## Usage
+
 Default chat command prefix is `!`
+
+**Markov**
 
 | Command | Description |
 |---------|-------------|
-| `!btc [EUR\|USD]` | Bitcoin price |
-| `!eth [EUR\|USD]` | Ethereum price |
+| `!train` | Fetch full channel message history and rebuild Markov models (server owner only) |
+| `!mimic <user>` | Generate a sentence in a user's writing style |
+| `!mimiclong <user>` | Generate a longer sentence (minimum 6 words) |
+| `!nickname <username> <nickname>` | Alias multiple usernames under one nickname |
+
+**Random**
+
+| Command | Description |
+|---------|-------------|
+| `!random` | Return a random message from the channel |
+| `!random <term>` | Return a random message containing the search term (supports `*` wildcard) |
+| `!random @user` | Return a random message where the user was mentioned (no ping sent) |
+
+**Stock & Crypto**
+
+| Command | Description |
+|---------|-------------|
+| `!btc [EUR\|USD]` | Bitcoin price (default: USD) |
+| `!eth [EUR\|USD]` | Ethereum price (default: USD) |
 | `!price <ticker or name>` | Stock price |
-| `!roll <NdN>` | Roll dice |
-| `!train` | Collect channel message history for Markov (server owner only) |
-| `!mimic <username or nickname>` | Generate text in a user's style |
-| `!nickname <username> <nickname>` | Alias multiple usernames under one nickname (admin only) |
+
+**Utility**
+
+| Command | Description |
+|---------|-------------|
+| `!roll <NdN[+N]>` | Roll dice, e.g. `!roll 2d6+3` |
+| `!coinflip` | Flip a coin |
+| `!number [max]` | Random number between 1 and max (default: 100) |
+| `!info` | Bot info |
 
 
-<!-- ROADMAP -->
-## Roadmap
-
-See the [open issues](https://github.com/villheik/Rankaisijabot/issues) for a list of proposed features (and known issues).
-
-
-
-<!-- CONTRIBUTING -->
 ## Contributing
 
-Contributions are what make the open source community such an amazing place to be learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+New features are added as cogs in the `bot/cogs/` folder. See [`.ai/GUIDELINES.md`](.ai/GUIDELINES.md) for conventions.
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Add tests in `tests/`
+4. Commit your changes
 5. Open a Pull Request
 
-New features are added in the `cogs` folder. The cogs that are loaded for the bot to use are configured in `config.yml`
 
-
-<!-- LICENSE -->
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
 
-
-<!-- CONTACT -->
-## Contact
-
-
-
-Project Link: [https://github.com/villheik/Rankaisijabot](https://github.com/villheik/Rankaisijabot)
-
-
-
-<!-- ACKNOWLEDGEMENTS -->
 ## Acknowledgements
 
 * [Rankaisijat](https://www.youtube.com/watch?v=Ix4GAHcOUwI)
-* []()
-* []()
-
-
-
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/villheik/repo.svg?style=for-the-badge
-[contributors-url]: https://github.com/villheik/repo/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/villheik/repo.svg?style=for-the-badge
-[forks-url]: https://github.com/villheik/repo/network/members
-[stars-shield]: https://img.shields.io/github/stars/villheik/repo.svg?style=for-the-badge
-[stars-url]: https://github.com/villheik/repo/stargazers
-[issues-shield]: https://img.shields.io/github/issues/villheik/repo.svg?style=for-the-badge
-[issues-url]: https://github.com/villheik/repo/issues
-[license-shield]: https://img.shields.io/github/license/villheik/repo.svg?style=for-the-badge
-[license-url]: https://github.com/villheik/repo/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/villheik
