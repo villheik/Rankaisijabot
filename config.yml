@@ -19,3 +19,4 @@ cogs:
         - stock
         - markov
         - random_msg
+        - poe
