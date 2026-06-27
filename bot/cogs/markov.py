@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands, tasks
 from bot import constants
 
-DB_PATH = "/data/markov.db"
+DB_PATH = "/data/rankaisija.db"
 
 
 class Markov(commands.Cog, name="markov"):
