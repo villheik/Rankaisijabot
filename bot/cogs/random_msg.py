@@ -69,7 +69,7 @@ class RandomMsg(commands.Cog, name="random_msg"):
 
         if search_term is None:
             row = conn.execute(
-                "SELECT id, content, username FROM messages WHERE channel_id = ? ORDER BY RANDOM() LIMIT 1",
+                "SELECT id, content, username FROM messages WHERE channel_id = ? AND content NOT LIKE '!%' ORDER BY RANDOM() LIMIT 1",
                 (channel_id,),
             ).fetchone()
         elif search_term.startswith('@'):
@@ -79,7 +79,7 @@ class RandomMsg(commands.Cog, name="random_msg"):
                 conn.close()
                 return None
             rows = conn.execute(
-                "SELECT id, content, username FROM messages WHERE channel_id = ? AND content LIKE ?",
+                "SELECT id, content, username FROM messages WHERE channel_id = ? AND content LIKE ? AND content NOT LIKE '!%'",
                 (channel_id, f'%<@{user_id}>%'),
             ).fetchall()
             row = random.choice(rows) if rows else None
@@ -87,7 +87,7 @@ class RandomMsg(commands.Cog, name="random_msg"):
             sql_like = '%' + search_term.replace('*', '%') + '%'
             pattern = self._build_regex(search_term)
             rows = conn.execute(
-                "SELECT id, content, username FROM messages WHERE channel_id = ? AND LOWER(content) LIKE LOWER(?)",
+                "SELECT id, content, username FROM messages WHERE channel_id = ? AND LOWER(content) LIKE LOWER(?) AND content NOT LIKE '!%'",
                 (channel_id, sql_like),
             ).fetchall()
             matches = [(i, c, u) for i, c, u in rows if pattern.search(c)]

@@ -13,6 +13,8 @@ MESSAGES = [
     (5, BOB_ID,   "bob",   "nothing relevant here",              CHANNEL),
     (6, BOB_ID,   "bob",   f"hey <@{ALICE_ID}> check this out",  CHANNEL),
     (7, ALICE_ID, "alice", f"<@{BOB_ID}> is that you",           CHANNEL),
+    (8, BOB_ID,   "bob",   "!random secretword",                 CHANNEL),
+    (9, BOB_ID,   "bob",   "!poe witch minion",                  CHANNEL),
 ]
 
 NICKNAMES = [
