@@ -75,6 +75,30 @@ class Markov(commands.Cog, name="markov"):
         model = markovify.NewlineText("\n".join(messages), state_size=state_size)
         return model, count
 
+    async def _build_nickname_cache(self, loop):
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("SELECT DISTINCT channel_id, nickname FROM nicknames").fetchall()
+        conn.close()
+
+        for channel_id, nickname in rows:
+            cache_key = (channel_id, nickname.lower())
+            if cache_key in self._model_cache:
+                continue
+            usernames = self._resolve_usernames(nickname, channel_id)
+            if len(usernames) == 1:
+                user_key = (channel_id, usernames[0].lower())
+                if user_key in self._model_cache:
+                    self._model_cache[cache_key] = self._model_cache[user_key]
+            else:
+                try:
+                    model, _ = await loop.run_in_executor(
+                        None, partial(self._build_model, channel_id, usernames)
+                    )
+                    if model:
+                        self._model_cache[cache_key] = model
+                except Exception as e:
+                    self.bot.logger.error(f"markov: nickname rebuild epäonnistui {channel_id}/{nickname}: {e}")
+
     @tasks.loop(time=datetime.time(hour=constants.Markov.rebuild_hour, minute=0))
     async def nightly_rebuild(self):
         self.bot.logger.info("markov: aloitetaan yöllinen rebuild")
@@ -97,6 +121,7 @@ class Markov(commands.Cog, name="markov"):
             except Exception as e:
                 self.bot.logger.error(f"markov: rebuild epäonnistui {channel_id}/{username}: {e}")
 
+        await self._build_nickname_cache(loop)
         self.bot.logger.info(f"markov: rebuild valmis, {built}/{len(rows)} mallia rakennettu")
 
     @commands.Cog.listener()
@@ -173,6 +198,7 @@ class Markov(commands.Cog, name="markov"):
             except Exception as e:
                 self.bot.logger.error(f"markov: train rebuild epäonnistui {ch_id}/{username}: {e}")
 
+        await self._build_nickname_cache(loop)
         await status_msg.edit(content=f"Valmis! {count} uutta viestiä tallennettu. {built} mallia rakennettu.")
 
     @commands.command(name="nickname")
