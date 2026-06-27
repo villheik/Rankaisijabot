@@ -125,11 +125,21 @@ class F1(commands.Cog, name="f1"):
 
     @tasks.loop(minutes=1)
     async def session_reminder(self):
+        try:
+            await self._session_reminder_tick()
+        except Exception as e:
+            self.bot.logger.error(f"f1: session_reminder virhe: {e}", exc_info=True)
+
+    async def _session_reminder_tick(self):
         conn = sqlite3.connect(DB_PATH)
-        row = conn.execute(
-            "SELECT value FROM release_config WHERE key = 'channel_id'"
-        ).fetchone()
-        conn.close()
+        try:
+            row = conn.execute(
+                "SELECT value FROM release_config WHERE key = 'channel_id'"
+            ).fetchone()
+        except Exception:
+            return
+        finally:
+            conn.close()
 
         if row is None:
             return
@@ -140,7 +150,8 @@ class F1(commands.Cog, name="f1"):
 
         try:
             races = await self._fetch_schedule()
-        except Exception:
+        except Exception as e:
+            self.bot.logger.error(f"f1: aikataulun haku epäonnistui: {e}")
             return
 
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -185,9 +196,31 @@ class F1(commands.Cog, name="f1"):
             conn = sqlite3.connect(DB_PATH)
             subs = conn.execute("SELECT user_id FROM f1_subscribers").fetchall()
             conn.close()
-            mentions = " ".join(f"<@{row[0]}>" for row in subs)
+            mentions = " ".join(f"<@{uid[0]}>" for uid in subs)
             suffix = f"\n{mentions}" if mentions else ""
             await channel.send(f"{message}{suffix}\n-# Kirjoita `!f1sub` saadaksesi henkilökohtaisen ilmoituksen")
+
+    @commands.command(name="f1debug")
+    async def f1debug(self, context):
+        if context.author.id != context.guild.owner_id:
+            return
+        try:
+            races = await self._fetch_schedule()
+        except Exception as e:
+            await context.send(f"API-haku epäonnistui: {e}")
+            return
+        now = datetime.datetime.now(datetime.timezone.utc)
+        result = _next_race(races, now)
+        if result is None:
+            await context.send("Ei tulevia sessioita.")
+            return
+        race, remaining = result
+        lines = [f"**{race['raceName']}** R{race['round']} S{race['season']}"]
+        for key, dt in remaining:
+            minutes_until = (dt - now).total_seconds() / 60
+            flag = " ✅" if key in ANNOUNCE_SESSIONS else ""
+            lines.append(f"`{key}` — {minutes_until:.1f} min{flag}")
+        await context.send("\n".join(lines))
 
     @commands.command(name="f1sub")
     async def f1sub(self, context):
