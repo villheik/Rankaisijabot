@@ -11,7 +11,7 @@ _DISCORD_EPOCH_MS = 1420070400000
 
 def _snowflake_to_dt(snowflake_id: int) -> datetime.datetime:
     ms = (snowflake_id >> 22) + _DISCORD_EPOCH_MS
-    return datetime.datetime.fromtimestamp(ms / 1000, tz=datetime.timezone.utc)
+    return datetime.datetime.fromtimestamp(ms / 1000)
 
 
 def _format_dt(dt: datetime.datetime) -> str:
