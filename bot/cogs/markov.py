@@ -82,7 +82,7 @@ class Markov(commands.Cog, name="markov"):
         if count < 10:
             return None, count
         state_size = 1 if count < 500 else 2 if count < 5000 else 3
-        model = markovify.NewlineText("\n".join(messages), state_size=state_size)
+        model = markovify.NewlineText("\n".join(messages), state_size=state_size, retain_original=False)
         return model, count
 
     def _load_model_from_db(self, channel_id: int, username: str) -> Optional[markovify.NewlineText]:
