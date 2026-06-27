@@ -78,6 +78,11 @@ class F1(commands.Cog, name="f1"):
                 PRIMARY KEY (season, round, session)
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS f1_subscribers (
+                user_id INTEGER PRIMARY KEY
+            )
+        """)
         conn.commit()
         conn.close()
 
@@ -177,7 +182,30 @@ class F1(commands.Cog, name="f1"):
             conn.commit()
             conn.close()
 
-            await channel.send(message)
+            conn = sqlite3.connect(DB_PATH)
+            subs = conn.execute("SELECT user_id FROM f1_subscribers").fetchall()
+            conn.close()
+            mentions = " ".join(f"<@{row[0]}>" for row in subs)
+            suffix = f"\n{mentions}" if mentions else ""
+            await channel.send(f"{message}{suffix}\n-# Kirjoita `!f1sub` saadaksesi henkilökohtaisen ilmoituksen")
+
+    @commands.command(name="f1sub")
+    async def f1sub(self, context):
+        user_id = context.author.id
+        conn = sqlite3.connect(DB_PATH)
+        existing = conn.execute(
+            "SELECT 1 FROM f1_subscribers WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        if existing:
+            conn.execute("DELETE FROM f1_subscribers WHERE user_id = ?", (user_id,))
+            conn.commit()
+            conn.close()
+            await context.send(f"{context.author.mention} poistettu F1-ilmoituslistalta.")
+        else:
+            conn.execute("INSERT OR IGNORE INTO f1_subscribers VALUES (?)", (user_id,))
+            conn.commit()
+            conn.close()
+            await context.send(f"{context.author.mention} lisätty F1-ilmoituslistalle.")
 
     @session_reminder.before_loop
     async def before_reminder(self):
