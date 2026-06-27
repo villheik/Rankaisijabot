@@ -1,7 +1,6 @@
 import sqlite3
 import pytest
-import markovify
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from bot.cogs.markov import Markov
 
 CHANNEL = 111
@@ -45,13 +44,6 @@ def db(tmp_path, monkeypatch):
         CREATE TABLE nicknames (
             channel_id INTEGER, nickname TEXT, username TEXT,
             PRIMARY KEY (channel_id, nickname, username)
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE markov_models (
-            channel_id INTEGER, username TEXT,
-            model_json TEXT, built_at TEXT,
-            PRIMARY KEY (channel_id, username)
         )
     """)
     conn.executemany("INSERT INTO messages VALUES (?, ?, ?, ?, ?)", MESSAGES)
@@ -119,36 +111,3 @@ class TestBuildModel:
     def test_model_can_generate_sentence(self, cog):
         model, _ = cog._build_model(CHANNEL, ["alice"])
         assert model.make_sentence(tries=100) is not None
-
-
-class TestModelPersistence:
-    def test_save_and_load_roundtrip(self, cog):
-        model, _ = cog._build_model(CHANNEL, ["alice"])
-        cog._save_model_to_db(CHANNEL, "alice", model)
-        loaded = cog._load_model_from_db(CHANNEL, "alice")
-        assert isinstance(loaded, markovify.NewlineText)
-
-    def test_loaded_model_generates_sentence(self, cog):
-        model, _ = cog._build_model(CHANNEL, ["alice"])
-        cog._save_model_to_db(CHANNEL, "alice", model)
-        loaded = cog._load_model_from_db(CHANNEL, "alice")
-        assert loaded.make_sentence(tries=100) is not None
-
-    def test_load_nonexistent_returns_none(self, cog):
-        assert cog._load_model_from_db(CHANNEL, "nobody") is None
-
-    def test_load_case_insensitive(self, cog):
-        model, _ = cog._build_model(CHANNEL, ["alice"])
-        cog._save_model_to_db(CHANNEL, "alice", model)
-        assert cog._load_model_from_db(CHANNEL, "ALICE") is not None
-
-    def test_save_overwrites_existing(self, cog):
-        model, _ = cog._build_model(CHANNEL, ["alice"])
-        cog._save_model_to_db(CHANNEL, "alice", model)
-        cog._save_model_to_db(CHANNEL, "alice", model)
-        assert cog._load_model_from_db(CHANNEL, "alice") is not None
-
-    def test_load_wrong_channel_returns_none(self, cog):
-        model, _ = cog._build_model(CHANNEL, ["alice"])
-        cog._save_model_to_db(CHANNEL, "alice", model)
-        assert cog._load_model_from_db(OTHER_CHANNEL, "alice") is None

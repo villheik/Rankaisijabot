@@ -2,7 +2,6 @@ import sqlite3
 import datetime
 import asyncio
 from functools import partial
-from typing import Optional
 import markovify
 import discord
 from discord.ext import commands, tasks
@@ -46,15 +45,6 @@ class Markov(commands.Cog, name="markov"):
                 PRIMARY KEY (channel_id, nickname, username)
             )
         """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS markov_models (
-                channel_id INTEGER,
-                username TEXT,
-                model_json TEXT,
-                built_at TEXT,
-                PRIMARY KEY (channel_id, username)
-            )
-        """)
         conn.commit()
         conn.close()
 
@@ -82,31 +72,8 @@ class Markov(commands.Cog, name="markov"):
         if count < 10:
             return None, count
         state_size = 1 if count < 500 else 2 if count < 5000 else 3
-        model = markovify.NewlineText("\n".join(messages), state_size=state_size, retain_original=False)
+        model = markovify.NewlineText("\n".join(messages), state_size=state_size)
         return model, count
-
-    def _load_model_from_db(self, channel_id: int, username: str) -> Optional[markovify.NewlineText]:
-        conn = sqlite3.connect(DB_PATH)
-        row = conn.execute(
-            "SELECT model_json FROM markov_models WHERE channel_id = ? AND LOWER(username) = LOWER(?)",
-            (channel_id, username),
-        ).fetchone()
-        conn.close()
-        if row is None:
-            return None
-        try:
-            return markovify.NewlineText.from_json(row[0])
-        except Exception:
-            return None
-
-    def _save_model_to_db(self, channel_id: int, username: str, model: markovify.NewlineText) -> None:
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute(
-            "INSERT OR REPLACE INTO markov_models (channel_id, username, model_json, built_at) VALUES (?, ?, ?, datetime('now'))",
-            (channel_id, username, model.to_json()),
-        )
-        conn.commit()
-        conn.close()
 
     @tasks.loop(time=datetime.time(hour=constants.Markov.rebuild_hour, minute=0))
     async def nightly_rebuild(self):
@@ -126,7 +93,6 @@ class Markov(commands.Cog, name="markov"):
                 )
                 if model:
                     self._model_cache[(channel_id, username.lower())] = model
-                    self._save_model_to_db(channel_id, username, model)
                     built += 1
             except Exception as e:
                 self.bot.logger.error(f"markov: rebuild epäonnistui {channel_id}/{username}: {e}")
@@ -203,7 +169,6 @@ class Markov(commands.Cog, name="markov"):
                 )
                 if model:
                     self._model_cache[(ch_id, username.lower())] = model
-                    self._save_model_to_db(ch_id, username, model)
                     built += 1
             except Exception as e:
                 self.bot.logger.error(f"markov: train rebuild epäonnistui {ch_id}/{username}: {e}")
@@ -226,17 +191,8 @@ class Markov(commands.Cog, name="markov"):
         cache_key = (context.channel.id, target.lower())
         loop = context.bot.loop
 
-        if cache_key not in self._model_cache and len(usernames) == 1:
-            # Single-username: try DB before building from scratch.
-            # Multi-username (combined nickname) skips DB — models are stored per
-            # individual username and a combined model would be a different thing.
-            model = self._load_model_from_db(context.channel.id, usernames[0])
-            if model:
-                self._model_cache[cache_key] = model
-                self.bot.logger.info(f"mimic: DB hit '{target}'")
-
         if cache_key not in self._model_cache:
-            self.bot.logger.info(f"mimic: cache/DB miss '{target}', rakennetaan malli")
+            self.bot.logger.info(f"mimic: cache miss '{target}', rakennetaan malli")
             model, count = await loop.run_in_executor(
                 None, partial(self._build_model, context.channel.id, usernames)
             )
@@ -245,9 +201,7 @@ class Markov(commands.Cog, name="markov"):
                 await context.send(f"Liian vähän viestejä kohteelle `{target}` (minimi 10).")
                 return None, None, usernames
             self._model_cache[cache_key] = model
-            if len(usernames) == 1:
-                self._save_model_to_db(context.channel.id, usernames[0], model)
-            self.bot.logger.info(f"mimic: malli rakennettu ja tallennettu ({count} viestiä)")
+            self.bot.logger.info(f"mimic: malli rakennettu ({count} viestiä)")
         else:
             self.bot.logger.info(f"mimic: cache hit '{target}'")
 
