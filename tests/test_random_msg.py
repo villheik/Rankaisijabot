@@ -141,3 +141,15 @@ class TestFetchRandom:
         _, _, timestamp = result
         assert isinstance(timestamp, str)
         assert "klo" in timestamp
+
+    def test_bot_commands_excluded_by_search(self, db, cog):
+        # "secretword" exists only in "!random secretword" — should not be found
+        result = cog._fetch_random(CHANNEL, "secretword")
+        assert result is None
+
+    def test_bot_commands_excluded_no_term(self, db, cog):
+        for _ in range(30):
+            result = cog._fetch_random(CHANNEL)
+            assert result is not None
+            content, _, _ = result
+            assert not content.startswith("!")
