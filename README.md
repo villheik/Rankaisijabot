@@ -112,6 +112,7 @@ markov:
      --restart unless-stopped \
      -e BOT_TOKEN=YOUR_PROD_TOKEN \
      -v /home/$USER/rankaisijabot-data-prod:/data \
+     -v /etc/localtime:/etc/localtime:ro \
      ghcr.io/villheik/rankaisijabot:latest
    ```
 
@@ -122,6 +123,7 @@ markov:
      --restart unless-stopped \
      -e BOT_TOKEN=YOUR_DEV_TOKEN \
      -v /home/$USER/rankaisijabot-data:/data \
+     -v /etc/localtime:/etc/localtime:ro \
      ghcr.io/villheik/rankaisijabot:dev
    ```
 

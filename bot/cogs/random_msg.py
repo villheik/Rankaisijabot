@@ -15,7 +15,7 @@ def _snowflake_to_dt(snowflake_id: int) -> datetime.datetime:
 
 
 def _format_dt(dt: datetime.datetime) -> str:
-    return f"{dt.day}.{dt.month}.{dt.year} klo {dt.strftime('%H:%M')}"
+    return f"{dt.day}.{dt.month}.{dt.year} klo {dt.strftime('%H:%M')} ({dt.strftime('%Z')})"
 
 DB_PATH = "/data/rankaisija.db"
 MENTION_RE = re.compile(r'<@!?(\d+)>')
