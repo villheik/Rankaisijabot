@@ -1,11 +1,26 @@
+import datetime
 import pytest
-from bot.cogs.random_msg import RandomMsg
+from bot.cogs.random_msg import RandomMsg, _snowflake_to_dt, _format_dt
 from tests.conftest import CHANNEL, ALICE_ID, BOB_ID
 
 
 @pytest.fixture
 def cog():
     return RandomMsg(bot=None)
+
+
+class TestTimestamp:
+    def test_snowflake_to_dt_is_timezone_aware(self):
+        snowflake = 1234567890 << 22
+        dt = _snowflake_to_dt(snowflake)
+        assert dt.tzinfo is not None
+
+    def test_format_dt_includes_timezone(self):
+        dt = datetime.datetime(2025, 5, 1, 20, 56, tzinfo=datetime.timezone.utc).astimezone()
+        result = _format_dt(dt)
+        tz = dt.strftime('%Z')
+        assert tz in result
+        assert "()" not in result
 
 
 class TestBuildRegex:
