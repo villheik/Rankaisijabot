@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import sqlite3
 import aiohttp
@@ -90,13 +91,22 @@ class F1(commands.Cog, name="f1"):
         today = datetime.date.today()
         if self._cache_date == today and self._schedule_cache is not None:
             return self._schedule_cache
-        async with aiohttp.ClientSession() as session:
-            async with session.get(SCHEDULE_URL) as resp:
-                data = await resp.json(content_type=None)
-        races = data["MRData"]["RaceTable"]["Races"]
-        self._schedule_cache = races
-        self._cache_date = today
-        return races
+        last_exc = None
+        for attempt in range(3):
+            if attempt:
+                await asyncio.sleep(10)
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(SCHEDULE_URL) as resp:
+                        data = await resp.json(content_type=None)
+                races = data["MRData"]["RaceTable"]["Races"]
+                self._schedule_cache = races
+                self._cache_date = today
+                return races
+            except Exception as e:
+                last_exc = e
+                self.bot.logger.warning(f"f1: aikataulun haku epäonnistui (yritys {attempt + 1}/3): {e}")
+        raise last_exc
 
     @commands.command(name="f1")
     async def f1(self, context):
