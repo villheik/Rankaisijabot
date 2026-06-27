@@ -28,7 +28,7 @@ Rankaisijabot is a Discord bot built for a private server. Commands use the `!` 
 
 ### Built With
 
-* Python 3.9+
+* Python 3.12+
 * discord.py 2.x
 
 
@@ -36,7 +36,7 @@ Rankaisijabot is a Discord bot built for a private server. Commands use the `!` 
 
 ### Prerequisites
 
-* Python 3.9+
+* Python 3.12+
 * pip
 
 ### Installation (Local Development)
