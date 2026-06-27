@@ -78,6 +78,11 @@ class F1(commands.Cog, name="f1"):
                 PRIMARY KEY (season, round, session)
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS f1_subscribers (
+                user_id INTEGER PRIMARY KEY
+            )
+        """)
         conn.commit()
         conn.close()
 
@@ -152,13 +157,19 @@ class F1(commands.Cog, name="f1"):
                 continue
 
             minutes_until = (dt - now).total_seconds() / 60
-            if not (55 <= minutes_until <= 65):
+            if 55 <= minutes_until <= 65:
+                reminder_key = f"{key}_60"
+                message = f"🏎️ **{race['raceName']}** — {SESSION_NAMES[key]} alkaa tunnin kuluttua! (klo {_to_local(dt).strftime('%H:%M')})"
+            elif 4 <= minutes_until <= 6:
+                reminder_key = f"{key}_5"
+                message = f"🏎️ **{race['raceName']}** — {SESSION_NAMES[key]} alkaa 5 minuutin kuluttua!"
+            else:
                 continue
 
             conn = sqlite3.connect(DB_PATH)
             already = conn.execute(
                 "SELECT 1 FROM f1_announced WHERE season=? AND round=? AND session=?",
-                (season, round_num, key),
+                (season, round_num, reminder_key),
             ).fetchone()
             if already:
                 conn.close()
@@ -166,15 +177,35 @@ class F1(commands.Cog, name="f1"):
 
             conn.execute(
                 "INSERT OR IGNORE INTO f1_announced VALUES (?, ?, ?)",
-                (season, round_num, key),
+                (season, round_num, reminder_key),
             )
             conn.commit()
             conn.close()
 
-            local = _to_local(dt)
-            await channel.send(
-                f"🏎️ **{race['raceName']}** — {SESSION_NAMES[key]} alkaa tunnin kuluttua! (klo {local.strftime('%H:%M')})"
-            )
+            conn = sqlite3.connect(DB_PATH)
+            subs = conn.execute("SELECT user_id FROM f1_subscribers").fetchall()
+            conn.close()
+            mentions = " ".join(f"<@{row[0]}>" for row in subs)
+            suffix = f"\n{mentions}" if mentions else ""
+            await channel.send(f"{message}{suffix}\n-# Kirjoita `!f1sub` saadaksesi henkilökohtaisen ilmoituksen")
+
+    @commands.command(name="f1sub")
+    async def f1sub(self, context):
+        user_id = context.author.id
+        conn = sqlite3.connect(DB_PATH)
+        existing = conn.execute(
+            "SELECT 1 FROM f1_subscribers WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        if existing:
+            conn.execute("DELETE FROM f1_subscribers WHERE user_id = ?", (user_id,))
+            conn.commit()
+            conn.close()
+            await context.send(f"{context.author.mention} poistettu F1-ilmoituslistalta.")
+        else:
+            conn.execute("INSERT OR IGNORE INTO f1_subscribers VALUES (?)", (user_id,))
+            conn.commit()
+            conn.close()
+            await context.send(f"{context.author.mention} lisätty F1-ilmoituslistalle.")
 
     @session_reminder.before_loop
     async def before_reminder(self):
