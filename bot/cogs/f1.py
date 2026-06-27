@@ -152,13 +152,19 @@ class F1(commands.Cog, name="f1"):
                 continue
 
             minutes_until = (dt - now).total_seconds() / 60
-            if not (55 <= minutes_until <= 65):
+            if 55 <= minutes_until <= 65:
+                reminder_key = f"{key}_60"
+                message = f"🏎️ **{race['raceName']}** — {SESSION_NAMES[key]} alkaa tunnin kuluttua! (klo {_to_local(dt).strftime('%H:%M')})"
+            elif 4 <= minutes_until <= 6:
+                reminder_key = f"{key}_5"
+                message = f"🏎️ **{race['raceName']}** — {SESSION_NAMES[key]} alkaa 5 minuutin kuluttua!"
+            else:
                 continue
 
             conn = sqlite3.connect(DB_PATH)
             already = conn.execute(
                 "SELECT 1 FROM f1_announced WHERE season=? AND round=? AND session=?",
-                (season, round_num, key),
+                (season, round_num, reminder_key),
             ).fetchone()
             if already:
                 conn.close()
@@ -166,15 +172,12 @@ class F1(commands.Cog, name="f1"):
 
             conn.execute(
                 "INSERT OR IGNORE INTO f1_announced VALUES (?, ?, ?)",
-                (season, round_num, key),
+                (season, round_num, reminder_key),
             )
             conn.commit()
             conn.close()
 
-            local = _to_local(dt)
-            await channel.send(
-                f"🏎️ **{race['raceName']}** — {SESSION_NAMES[key]} alkaa tunnin kuluttua! (klo {local.strftime('%H:%M')})"
-            )
+            await channel.send(message)
 
     @session_reminder.before_loop
     async def before_reminder(self):
