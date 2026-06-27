@@ -70,6 +70,8 @@ The bot is designed to run in Docker on a Raspberry Pi (arm64). Images are autom
 - Push to `dev` branch → runs tests → builds `ghcr.io/villheik/rankaisijabot:dev`
 - Publish a GitHub Release → builds `ghcr.io/villheik/rankaisijabot:latest`
 
+The `!releasechannel` command configures which channel receives release announcements. The bot posts the GitHub release notes automatically on startup when a new release is detected. Only publishing a GitHub Release triggers an announcement — dev deployments do not.
+
 **Configuration**
 
 Bot settings are in `config.yml`:

@@ -75,25 +75,25 @@ class TestFetchRandom:
     def test_exact_word(self, db, cog):
         result = cog._fetch_random(CHANNEL, "dragon")
         assert result is not None
-        content, _ = result
+        content, _, _ = result
         assert content == "the dragon sleeps"
 
     def test_trailing_wildcard(self, db, cog):
         result = cog._fetch_random(CHANNEL, "dragon*")
         assert result is not None
-        content, _ = result
+        content, _, _ = result
         assert content in {"the dragon sleeps", "dragonfly is an insect"}
 
     def test_leading_wildcard(self, db, cog):
         result = cog._fetch_random(CHANNEL, "*dragon")
         assert result is not None
-        content, _ = result
+        content, _, _ = result
         assert content in {"the dragon sleeps", "a firedragon appeared"}
 
     def test_both_wildcards(self, db, cog):
         result = cog._fetch_random(CHANNEL, "*dragon*")
         assert result is not None
-        content, _ = result
+        content, _, _ = result
         assert content in {
             "the dragon sleeps",
             "dragonfly is an insect",
@@ -108,29 +108,36 @@ class TestFetchRandom:
     def test_nickname_shown(self, db, cog):
         result = cog._fetch_random(CHANNEL, "dragon")
         assert result is not None
-        _, display_name = result
+        _, display_name, _ = result
         assert display_name == "ally"
 
     def test_no_nickname_uses_username(self, db, cog):
         result = cog._fetch_random(CHANNEL, "nothing relevant")
         assert result is not None
-        _, display_name = result
+        _, display_name, _ = result
         assert display_name == "bob"
 
     def test_mention_search(self, db, cog):
         result = cog._fetch_random(CHANNEL, "@alice")
         assert result is not None
-        content, _ = result
+        content, _, _ = result
         assert "@alice" in content
         assert f"<@{ALICE_ID}>" not in content
 
     def test_mention_via_nickname(self, db, cog):
         result = cog._fetch_random(CHANNEL, "@ally")
         assert result is not None
-        content, _ = result
+        content, _, _ = result
         assert "@alice" in content
         assert f"<@{ALICE_ID}>" not in content
 
     def test_mention_unknown_user(self, db, cog):
         result = cog._fetch_random(CHANNEL, "@nobody")
         assert result is None
+
+    def test_timestamp_returned(self, db, cog):
+        result = cog._fetch_random(CHANNEL, "dragon")
+        assert result is not None
+        _, _, timestamp = result
+        assert isinstance(timestamp, str)
+        assert "klo" in timestamp

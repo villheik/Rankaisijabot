@@ -20,3 +20,4 @@ cogs:
         - markov
         - random_msg
         - poe
+        - release
