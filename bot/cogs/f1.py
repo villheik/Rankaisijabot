@@ -200,6 +200,28 @@ class F1(commands.Cog, name="f1"):
             suffix = f"\n{mentions}" if mentions else ""
             await channel.send(f"{message}{suffix}\n-# Kirjoita `!f1sub` saadaksesi henkilökohtaisen ilmoituksen")
 
+    @commands.command(name="f1debug")
+    async def f1debug(self, context):
+        if context.author.id != context.guild.owner_id:
+            return
+        try:
+            races = await self._fetch_schedule()
+        except Exception as e:
+            await context.send(f"API-haku epäonnistui: {e}")
+            return
+        now = datetime.datetime.now(datetime.timezone.utc)
+        result = _next_race(races, now)
+        if result is None:
+            await context.send("Ei tulevia sessioita.")
+            return
+        race, remaining = result
+        lines = [f"**{race['raceName']}** R{race['round']} S{race['season']}"]
+        for key, dt in remaining:
+            minutes_until = (dt - now).total_seconds() / 60
+            flag = " ✅" if key in ANNOUNCE_SESSIONS else ""
+            lines.append(f"`{key}` — {minutes_until:.1f} min{flag}")
+        await context.send("\n".join(lines))
+
     @commands.command(name="f1sub")
     async def f1sub(self, context):
         user_id = context.author.id
