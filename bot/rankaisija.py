@@ -8,6 +8,9 @@ class Rankaisija(Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    async def setup_hook(self):
+        await self.load_cogs()
+
     async def load_cogs(self):
         for cog in constants.Cog.cogs:
             try:
