@@ -1,5 +1,4 @@
 import discord
-import asyncio
 import platform
 import os
 from bot import constants
@@ -53,9 +52,4 @@ async def on_command_completion(context: Context) -> None:
         )
 
 
-async def load_cogs() -> None:
-    await rankaisijaBot.load_cogs()
-
-
-asyncio.run(load_cogs())
 rankaisijaBot.run(constants.Bot.token)
