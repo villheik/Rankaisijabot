@@ -2,8 +2,10 @@ import datetime
 import pytest
 from bot.cogs.notify import _parse_remind_at
 
-# Fixed "now": 2026-07-08 09:00 UTC = 12:00 EEST (Wednesday)
-NOW = datetime.datetime(2026, 7, 8, 9, 0, 0, tzinfo=datetime.timezone.utc).astimezone()
+# Fixed "now": 2026-07-08 12:00 EEST (= 09:00 UTC). Uses explicit UTC+3 so
+# tests are timezone-independent regardless of where CI runs.
+EEST = datetime.timezone(datetime.timedelta(hours=3))
+NOW = datetime.datetime(2026, 7, 8, 12, 0, 0, tzinfo=EEST)
 TODAY = NOW.date()
 TOMORROW = TODAY + datetime.timedelta(days=1)
 
@@ -13,8 +15,7 @@ def utc(dt: datetime.datetime) -> datetime.datetime:
 
 
 def make_local(date: datetime.date, h: int, m: int) -> datetime.datetime:
-    local_tz = NOW.tzinfo
-    return datetime.datetime.combine(date, datetime.time(h, m)).replace(tzinfo=local_tz)
+    return datetime.datetime.combine(date, datetime.time(h, m)).replace(tzinfo=EEST)
 
 
 class TestTimeOnly:
