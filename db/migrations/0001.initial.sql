@@ -1,5 +1,5 @@
 -- depends:
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY,
     user_id INTEGER,
     username TEXT,
@@ -7,12 +7,12 @@ CREATE TABLE messages (
     channel_id INTEGER
 );
 
-CREATE TABLE meta (
+CREATE TABLE IF NOT EXISTS meta (
     channel_id INTEGER PRIMARY KEY,
     last_message_id INTEGER
 );
 
-CREATE TABLE nicknames (
+CREATE TABLE IF NOT EXISTS nicknames (
     channel_id INTEGER,
     nickname TEXT,
     username TEXT,
