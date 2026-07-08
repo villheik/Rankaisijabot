@@ -5,6 +5,7 @@ import datetime
 from typing import Optional
 import discord
 from discord.ext import commands
+from bot.db import DB_PATH
 
 _DISCORD_EPOCH_MS = 1420070400000
 
@@ -16,8 +17,6 @@ def _snowflake_to_dt(snowflake_id: int) -> datetime.datetime:
 
 def _format_dt(dt: datetime.datetime) -> str:
     return f"{dt.day}.{dt.month}.{dt.year} klo {dt.strftime('%H:%M')} ({dt.strftime('%Z')})"
-
-DB_PATH = "/data/rankaisija.db"
 MENTION_RE = re.compile(r'<@!?(\d+)>')
 
 

@@ -3,8 +3,7 @@ import datetime
 import sqlite3
 import aiohttp
 from discord.ext import commands, tasks
-
-DB_PATH = "/data/rankaisija.db"
+from bot.db import DB_PATH
 SCHEDULE_URL = "https://api.jolpi.ca/ergast/f1/current.json?limit=100"
 
 SESSION_NAMES = {
@@ -63,29 +62,10 @@ class F1(commands.Cog, name="f1"):
         self.bot = bot
         self._schedule_cache = None
         self._cache_date = None
-        self._init_db()
         self.session_reminder.start()
 
     def cog_unload(self):
         self.session_reminder.cancel()
-
-    def _init_db(self):
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS f1_announced (
-                season INTEGER,
-                round INTEGER,
-                session TEXT,
-                PRIMARY KEY (season, round, session)
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS f1_subscribers (
-                user_id INTEGER PRIMARY KEY
-            )
-        """)
-        conn.commit()
-        conn.close()
 
     async def _fetch_schedule(self) -> list:
         today = datetime.date.today()
