@@ -3,8 +3,8 @@ import aiohttp
 from typing import Optional
 import discord
 from discord.ext import commands
+from bot.db import DB_PATH
 
-DB_PATH = "/data/rankaisija.db"
 GITHUB_REPO = "villheik/Rankaisijabot"
 
 
@@ -12,18 +12,6 @@ class Release(commands.Cog, name="release"):
     def __init__(self, bot):
         self.bot = bot
         self._checked = False
-        self._init_db()
-
-    def _init_db(self):
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS release_config (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            )
-        """)
-        conn.commit()
-        conn.close()
 
     def _get(self, key: str) -> Optional[str]:
         conn = sqlite3.connect(DB_PATH)

@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Bot
 from bot import constants
+from bot.db import run_migrations
 
 
 class Rankaisija(Bot):
@@ -9,6 +10,7 @@ class Rankaisija(Bot):
         super().__init__(*args, **kwargs)
 
     async def setup_hook(self):
+        run_migrations()
         await self.load_cogs()
 
     async def load_cogs(self):

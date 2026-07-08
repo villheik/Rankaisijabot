@@ -4,3 +4,4 @@ pyyaml
 aiohttp
 yfinance
 markovify
+yoyo-migrations

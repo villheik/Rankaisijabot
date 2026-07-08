@@ -6,47 +6,17 @@ import markovify
 import discord
 from discord.ext import commands, tasks
 from bot import constants
-
-DB_PATH = "/data/rankaisija.db"
+from bot.db import DB_PATH
 
 
 class Markov(commands.Cog, name="markov"):
     def __init__(self, bot):
         self.bot = bot
         self._model_cache = {}
-        self._init_db()
         self.nightly_rebuild.start()
 
     def cog_unload(self):
         self.nightly_rebuild.cancel()
-
-    def _init_db(self):
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS messages (
-                id INTEGER PRIMARY KEY,
-                user_id INTEGER,
-                username TEXT,
-                content TEXT,
-                channel_id INTEGER
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS meta (
-                channel_id INTEGER PRIMARY KEY,
-                last_message_id INTEGER
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS nicknames (
-                channel_id INTEGER,
-                nickname TEXT,
-                username TEXT,
-                PRIMARY KEY (channel_id, nickname, username)
-            )
-        """)
-        conn.commit()
-        conn.close()
 
     def _resolve_usernames(self, target: str, channel_id: int) -> list[str]:
         conn = sqlite3.connect(DB_PATH)
