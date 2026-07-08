@@ -4,8 +4,9 @@ from discord.ext import commands, tasks
 from bot.db import DB_PATH
 
 
-def _parse_remind_at(args: tuple) -> tuple[datetime.datetime, str] | None:
-    now = datetime.datetime.now().astimezone()
+def _parse_remind_at(args: tuple, now: datetime.datetime | None = None) -> tuple[datetime.datetime, str] | None:
+    if now is None:
+        now = datetime.datetime.now().astimezone()
     local_tz = now.tzinfo
     now_utc = now.astimezone(datetime.timezone.utc)
 
@@ -19,6 +20,7 @@ def _parse_remind_at(args: tuple) -> tuple[datetime.datetime, str] | None:
             return None
 
     def parse_date(s: str) -> datetime.date | None:
+        s = s.rstrip(".")
         for fmt in ("%d.%m.%Y", "%d.%m"):
             try:
                 d = datetime.datetime.strptime(s, fmt).date()
@@ -78,11 +80,14 @@ class Notify(commands.Cog, name="notify"):
 
     @commands.command(name="notify")
     async def notify(self, context, *args):
-        """Aseta muistutus. Muodot:
-  !notify 13:30 <viesti>          – seuraavan kerran kun kello on 13:30
-  !notify tomorrow 13:30 <viesti> – huomenna klo 13:30
-  !notify 24.7 13:30 <viesti>     – tiettyä päivämääränä
-  !notify 24.7.2026 13:30 <viesti>"""
+        """Aseta muistutus.
+
+        Muodot:
+        !notify 13:30 <viesti>           – seuraavan kerran kun kello on 13:30
+        !notify tomorrow 13:30 <viesti>  – huomenna klo 13:30
+        !notify 24.7. 13:30 <viesti>     – tiettynä päivämääränä
+        !notify 24.7.2026 13:30 <viesti> – tiettynä päivämääränä (eksplisiittinen vuosi)
+        """
         result = _parse_remind_at(args)
         if result is None:
             await context.send("Käyttö: `!notify [tomorrow|päivämäärä] <HH:MM> <viesti>`")
