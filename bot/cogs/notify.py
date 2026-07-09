@@ -79,7 +79,7 @@ class Notify(commands.Cog, name="reminders"):
     async def before_check_reminders(self):
         await self.bot.wait_until_ready()
 
-    @commands.command(name="notify")
+    @commands.command(name="notify", aliases=["remind"])
     async def notify(self, context, *args):
         """Aseta muistutus.
 
