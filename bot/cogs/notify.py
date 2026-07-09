@@ -51,7 +51,7 @@ def _parse_remind_at(args: tuple, now: datetime.datetime | None = None) -> tuple
     return None
 
 
-class Notify(commands.Cog, name="notify"):
+class Notify(commands.Cog, name="reminders"):
     def __init__(self, bot):
         self.bot = bot
         self.check_reminders.start()
@@ -79,7 +79,7 @@ class Notify(commands.Cog, name="notify"):
     async def before_check_reminders(self):
         await self.bot.wait_until_ready()
 
-    @commands.command(name="notify")
+    @commands.command(name="notify", aliases=["remind"])
     async def notify(self, context, *args):
         """Aseta muistutus.
 
