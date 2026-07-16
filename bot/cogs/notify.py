@@ -1,8 +1,28 @@
 from __future__ import annotations
+import re
 import sqlite3
 import datetime
 from discord.ext import commands, tasks
 from bot.db import DB_PATH
+
+
+_DURATION_RE = re.compile(r"^(\d+)(?::(\d{1,2}))?$")
+
+
+def _parse_relative(args: tuple, now_utc: datetime.datetime) -> tuple[datetime.datetime, str] | None:
+    if len(args) < 3 or args[0].lower() != "in":
+        return None
+    m = _DURATION_RE.match(args[1])
+    if not m:
+        return None
+    hours = int(m.group(1))
+    minutes = int(m.group(2)) if m.group(2) is not None else 0
+    if hours == 0 and minutes == 0:
+        return None
+    message = " ".join(args[2:])
+    if not message.strip():
+        return None
+    return now_utc + datetime.timedelta(hours=hours, minutes=minutes), message
 
 
 def _parse_remind_at(args: tuple, now: datetime.datetime | None = None) -> tuple[datetime.datetime, str] | None:
@@ -48,7 +68,8 @@ def _parse_remind_at(args: tuple, now: datetime.datetime | None = None) -> tuple
     if len(args) >= 3 and (d := parse_date(args[0])) and (t := parse_time(args[1])):
         return make_utc(d, t), " ".join(args[2:])
 
-    return None
+    # in <H> or in <H:MM> <message>
+    return _parse_relative(args, now_utc)
 
 
 class Notify(commands.Cog, name="reminders"):
@@ -88,10 +109,13 @@ class Notify(commands.Cog, name="reminders"):
         !notify tomorrow 13:30 <viesti>  – huomenna klo 13:30
         !notify 24.7. 13:30 <viesti>     – tiettynä päivämääränä
         !notify 24.7.2026 13:30 <viesti> – tiettynä päivämääränä (eksplisiittinen vuosi)
+        !notify in 3 <viesti>            – 3 tunnin päästä
+        !notify in 1:30 <viesti>         – 1 tunnin 30 minuutin päästä
+        !notify in 0:45 <viesti>         – 45 minuutin päästä
         """
         result = _parse_remind_at(args)
         if result is None:
-            await context.send("Käyttö: `!notify [tomorrow|päivämäärä] <HH:MM> <viesti>`")
+            await context.send("Käyttö: `!notify [tomorrow|päivämäärä] <HH:MM> <viesti>` tai `!notify in <H> <viesti>` tai `!notify in <H:MM> <viesti>`")
             return
         remind_at_utc, message = result
         if not message.strip():
