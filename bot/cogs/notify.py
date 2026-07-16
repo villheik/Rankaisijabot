@@ -105,7 +105,7 @@ class Notify(commands.Cog, name="reminders"):
         """Aseta muistutus.
 
         Muodot:
-        !notify 13:30 <viesti>           – seuraavan kerran kun kello on 13:30
+        !notify 13:37 <viesti>           – seuraavan kerran kun kello on 13:37
         !notify tomorrow 13:30 <viesti>  – huomenna klo 13:30
         !notify 24.7. 13:30 <viesti>     – tiettynä päivämääränä
         !notify 24.7.2026 13:30 <viesti> – tiettynä päivämääränä (eksplisiittinen vuosi)
