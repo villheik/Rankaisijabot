@@ -71,6 +71,39 @@ class TestDate:
         assert msg == "osta maito"
 
 
+class TestRelative:
+    def test_hours_only(self):
+        dt, msg = _parse_remind_at(("in", "3", "muistuta"), now=NOW)
+        assert utc(dt) == utc(NOW.astimezone(datetime.timezone.utc) + datetime.timedelta(hours=3))
+        assert msg == "muistuta"
+
+    def test_hours_and_minutes(self):
+        dt, msg = _parse_remind_at(("in", "3:20", "muistuta"), now=NOW)
+        assert utc(dt) == utc(NOW.astimezone(datetime.timezone.utc) + datetime.timedelta(hours=3, minutes=20))
+        assert msg == "muistuta"
+
+    def test_minutes_only(self):
+        dt, msg = _parse_remind_at(("in", "0:30", "muistuta"), now=NOW)
+        assert utc(dt) == utc(NOW.astimezone(datetime.timezone.utc) + datetime.timedelta(minutes=30))
+        assert msg == "muistuta"
+
+    def test_multiword_message(self):
+        _, msg = _parse_remind_at(("in", "1:00", "osta", "maito"), now=NOW)
+        assert msg == "osta maito"
+
+    def test_zero_duration_invalid(self):
+        assert _parse_remind_at(("in", "0", "viesti"), now=NOW) is None
+
+    def test_zero_hours_zero_minutes_invalid(self):
+        assert _parse_remind_at(("in", "0:00", "viesti"), now=NOW) is None
+
+    def test_missing_message_invalid(self):
+        assert _parse_remind_at(("in", "3"), now=NOW) is None
+
+    def test_invalid_duration_format(self):
+        assert _parse_remind_at(("in", "abc", "viesti"), now=NOW) is None
+
+
 class TestInvalid:
     def test_empty_args(self):
         assert _parse_remind_at((), now=NOW) is None
