@@ -369,10 +369,11 @@ class Casino(commands.Cog, name="casino"):
             return
 
         # Ruudukko omana viestinään (pelkkiä emojeja → jumbo-koko Discordissa)
-        grid_rows = [
-            _ROW_LABEL[row] + " " + " ".join(grid[reel][row]["emoji"] for reel in range(3))
-            for row in range(3)
-        ]
+        grid_rows = ["5️⃣"]
+        for row in range(3):
+            fruits = " ".join(grid[reel][row]["emoji"] for reel in range(3))
+            grid_rows.append(f"{_ROW_LABEL[row]} {fruits}")
+        grid_rows.append("4️⃣")
         await ctx.send("\n".join(grid_rows))
 
         if status == "win":
