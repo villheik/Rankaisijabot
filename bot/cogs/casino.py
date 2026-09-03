@@ -2,7 +2,7 @@ import random
 import datetime
 import sqlite3
 import yaml
-from discord.ext import commands
+from discord.ext import commands, tasks
 from bot.db import DB_PATH
 
 with open("casino.yml", encoding="UTF-8") as f:
@@ -262,6 +262,45 @@ def _db_work_start(user_id, guild_id, job):
     return "started", job, job_cfg["cooldown_hours"], 0
 
 
+def _db_collect_finished_jobs():
+    now = datetime.datetime.utcnow()
+    conn = sqlite3.connect(DB_PATH)
+    finished = conn.execute(
+        "SELECT user_id, guild_id, job FROM casino_active_job WHERE finishes_at <= ?",
+        (now.isoformat(),),
+    ).fetchall()
+    results = []
+    for user_id, guild_id, job in finished:
+        job_cfg = _JOBS.get(job)
+        conn.execute(
+            "DELETE FROM casino_active_job WHERE user_id = ? AND guild_id = ?",
+            (user_id, guild_id),
+        )
+        if not job_cfg:
+            conn.commit()
+            continue
+        payout = job_cfg["payout"]
+        row = conn.execute(
+            "SELECT balance, debt FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+            (user_id, guild_id),
+        ).fetchone()
+        if row is None:
+            conn.commit()
+            continue
+        balance, debt = row
+        debt_paid = min(debt, payout)
+        new_debt = debt - debt_paid
+        new_balance = balance + (payout - debt_paid)
+        conn.execute(
+            "UPDATE casino_balance SET balance = ?, debt = ? WHERE user_id = ? AND guild_id = ?",
+            (new_balance, new_debt, user_id, guild_id),
+        )
+        conn.commit()
+        results.append((user_id, guild_id, job, payout, debt_paid, new_debt, new_balance))
+    conn.close()
+    return results
+
+
 def _db_work_status(user_id, guild_id):
     now = datetime.datetime.utcnow()
     conn = sqlite3.connect(DB_PATH)
@@ -315,10 +354,48 @@ def _db_work_status(user_id, guild_id):
 class Casino(commands.Cog, name="casino"):
     def __init__(self, bot):
         self.bot = bot
+        self._job_notifier.start()
+
+    def cog_unload(self):
+        self._job_notifier.cancel()
 
     async def _run(self, fn, *args):
         loop = self.bot.loop
         return await loop.run_in_executor(None, lambda: fn(*args))
+
+    @tasks.loop(minutes=1)
+    async def _job_notifier(self):
+        finished = await self._run(_db_collect_finished_jobs)
+        if not finished:
+            return
+        # Luetaan ilmoituskanava release_config:sta (sama kuin f1/release käyttää)
+        channel_id = await self._run(self._get_notify_channel_id)
+        channel = self.bot.get_channel(channel_id) if channel_id else None
+        if channel is None:
+            return
+        for user_id, guild_id, job, payout, debt_paid, new_debt, new_balance in finished:
+            job_cfg = _JOBS.get(job, {})
+            msg = f"<@{user_id}> {job_cfg.get('flavor', f'Työ {job} valmis.')} +{payout} \U0001fa99."
+            if debt_paid > 0:
+                msg += f" ({debt_paid} \U0001fa99 meni velan lyhennykseen"
+                if new_debt > 0:
+                    msg += f", velkaa jäljellä {new_debt} \U0001fa99"
+                msg += ".)"
+            msg += f" Saldo: {new_balance} \U0001fa99."
+            await channel.send(msg)
+
+    @staticmethod
+    def _get_notify_channel_id():
+        conn = sqlite3.connect(DB_PATH)
+        row = conn.execute(
+            "SELECT value FROM release_config WHERE key = 'channel_id'"
+        ).fetchone()
+        conn.close()
+        return int(row[0]) if row else None
+
+    @_job_notifier.before_loop
+    async def _before_notifier(self):
+        await self.bot.wait_until_ready()
 
     @commands.command(name="balance", aliases=["bal"], help="Näytä oma saldo ja velkatilanne.")
     async def balance(self, ctx):
