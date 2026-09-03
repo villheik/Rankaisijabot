@@ -8,11 +8,11 @@ symbols:
   - emoji: "🎰"
     name: "RAY"
     weight: 1
-    payout: 190
+    payout: 185
   - emoji: "⭐"
     name: "Tähti"
     weight: 6
-    payout: 75
+    payout: 73
     wild: true
   - emoji: "🍒"
     name: "Kirsikka"
@@ -23,7 +23,7 @@ symbols:
   - emoji: "🍓"
     name: "Mansikka"
     weight: 10
-    payout: 19
+    payout: 18
     partial_payouts:
       2: 4
   - emoji: "🍊"
@@ -37,7 +37,7 @@ symbols:
   - emoji: "🍐"
     name: "Päärynä"
     weight: 22
-    payout: 9
+    payout: 8
   - emoji: "🍉"
     name: "Vesimeloni"
     weight: 26
