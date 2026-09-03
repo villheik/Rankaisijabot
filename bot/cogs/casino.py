@@ -62,33 +62,28 @@ def _calculate_winnings(grid, per_line_bet):
     return total, winning_lines
 
 
-def _db_get_or_create(user_id, guild_id):
-    conn = sqlite3.connect(DB_PATH)
-    row = conn.execute(
-        "SELECT balance, debt, pending_winnings FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+def _ensure_balance(conn, user_id, guild_id):
+    exists = conn.execute(
+        "SELECT 1 FROM casino_balance WHERE user_id = ? AND guild_id = ?",
         (user_id, guild_id),
     ).fetchone()
-    if row is None:
+    if exists is None:
         conn.execute(
             "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings) VALUES (?, ?, ?, 0, 0)",
             (user_id, guild_id, _STARTING_BALANCE),
         )
         conn.commit()
-        row = (_STARTING_BALANCE, 0, 0)
+
+
+def _db_get_or_create(user_id, guild_id):
+    conn = sqlite3.connect(DB_PATH)
+    _ensure_balance(conn, user_id, guild_id)
+    row = conn.execute(
+        "SELECT balance, debt, pending_winnings FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+        (user_id, guild_id),
+    ).fetchone()
     conn.close()
     return row
-
-
-def _db_update(user_id, guild_id, **kwargs):
-    sets = ", ".join(f"{k} = ?" for k in kwargs)
-    vals = list(kwargs.values()) + [user_id, guild_id]
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        f"UPDATE casino_balance SET {sets} WHERE user_id = ? AND guild_id = ?",
-        vals,
-    )
-    conn.commit()
-    conn.close()
 
 
 def _db_slot(user_id, guild_id, per_line_bet, grid):
@@ -218,55 +213,84 @@ def _db_loan(user_id, guild_id, amount):
     return "ok", new_debt, interest, new_balance
 
 
-def _db_work(user_id, guild_id, job):
+def _db_work_start(user_id, guild_id, job):
     job_cfg = _JOBS[job]
     now = datetime.datetime.utcnow()
-
     conn = sqlite3.connect(DB_PATH)
-    row = conn.execute(
-        "SELECT balance, debt, pending_winnings FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+    _ensure_balance(conn, user_id, guild_id)
+
+    active = conn.execute(
+        "SELECT job, finishes_at FROM casino_active_job WHERE user_id = ? AND guild_id = ?",
         (user_id, guild_id),
     ).fetchone()
-    if row is None:
-        conn.execute(
-            "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings) VALUES (?, ?, ?, 0, 0)",
-            (user_id, guild_id, _STARTING_BALANCE),
-        )
-        conn.commit()
-        balance, debt = _STARTING_BALANCE, 0
-    else:
-        balance, debt = row[0], row[1]
 
-    cd_row = conn.execute(
-        "SELECT last_used FROM casino_job_cooldowns WHERE user_id = ? AND guild_id = ? AND job = ?",
-        (user_id, guild_id, job),
+    if active is not None:
+        active_job, finishes_at_str = active
+        finishes_at = datetime.datetime.fromisoformat(finishes_at_str)
+        remaining = finishes_at - now
+        hours, rem = divmod(max(0, int(remaining.total_seconds())), 3600)
+        minutes = rem // 60
+        conn.close()
+        return "already_working", active_job, hours, minutes
+
+    finishes_at = now + datetime.timedelta(hours=job_cfg["cooldown_hours"])
+    conn.execute(
+        "INSERT INTO casino_active_job (user_id, guild_id, job, finishes_at) VALUES (?, ?, ?, ?)",
+        (user_id, guild_id, job, finishes_at.isoformat()),
+    )
+    conn.commit()
+    conn.close()
+    return "started", job, job_cfg["cooldown_hours"], 0
+
+
+def _db_work_status(user_id, guild_id):
+    now = datetime.datetime.utcnow()
+    conn = sqlite3.connect(DB_PATH)
+    _ensure_balance(conn, user_id, guild_id)
+
+    active = conn.execute(
+        "SELECT job, finishes_at FROM casino_active_job WHERE user_id = ? AND guild_id = ?",
+        (user_id, guild_id),
     ).fetchone()
 
-    if cd_row is not None:
-        last_used = datetime.datetime.fromisoformat(cd_row[0])
-        available_at = last_used + datetime.timedelta(hours=job_cfg["cooldown_hours"])
-        if now < available_at:
-            remaining = available_at - now
-            hours, rem = divmod(int(remaining.total_seconds()), 3600)
-            minutes = rem // 60
-            conn.close()
-            return "cooldown", hours, minutes, 0, 0, 0, 0
+    if active is None:
+        conn.close()
+        return "no_job", None, 0, 0, 0, 0, 0
 
-    conn.execute(
-        "INSERT OR REPLACE INTO casino_job_cooldowns (user_id, guild_id, job, last_used) VALUES (?, ?, ?, ?)",
-        (user_id, guild_id, job, now.isoformat()),
-    )
-    payout = job_cfg["payout"]
+    job, finishes_at_str = active
+    finishes_at = datetime.datetime.fromisoformat(finishes_at_str)
+
+    if now < finishes_at:
+        remaining = finishes_at - now
+        hours, rem = divmod(int(remaining.total_seconds()), 3600)
+        minutes = rem // 60
+        conn.close()
+        return "working", job, hours, minutes, 0, 0, 0
+
+    # Työ valmis — kerätään palkka
+    job_cfg = _JOBS.get(job)
+    payout = job_cfg["payout"] if job_cfg else 0
+    row = conn.execute(
+        "SELECT balance, debt FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+        (user_id, guild_id),
+    ).fetchone()
+    balance, debt = row
+
     debt_paid = min(debt, payout)
     new_debt = debt - debt_paid
     new_balance = balance + (payout - debt_paid)
+
     conn.execute(
         "UPDATE casino_balance SET balance = ?, debt = ? WHERE user_id = ? AND guild_id = ?",
         (new_balance, new_debt, user_id, guild_id),
     )
+    conn.execute(
+        "DELETE FROM casino_active_job WHERE user_id = ? AND guild_id = ?",
+        (user_id, guild_id),
+    )
     conn.commit()
     conn.close()
-    return "ok", 0, 0, payout, debt_paid, new_debt, new_balance
+    return "done", job, payout, debt_paid, new_debt, new_balance, 0
 
 
 class Casino(commands.Cog, name="casino"):
@@ -422,30 +446,54 @@ class Casino(commands.Cog, name="casino"):
 
     @commands.command(name="work", help=_WORK_HELP)
     async def work(self, ctx, job: str = None):
-        if job is None or job not in _JOBS:
+        if job is not None and job not in _JOBS:
             lines = "\n".join(
-                f"  `!work {j['name']}`  — {j['payout']} \U0001fa99 (cooldown {j['cooldown_hours']}h)"
+                f"  `!work {j['name']}`  — {j['payout']} \U0001fa99 ({j['cooldown_hours']}h)"
                 for j in _CONFIG["jobs"]
             )
-            await ctx.send(f"Valitse työlaji:\n{lines}")
+            await ctx.send(f"Tuntematon työlaji. Valitse:\n{lines}")
             return
 
-        status, hours, minutes, payout, debt_paid, new_debt, new_balance = await self._run(
-            _db_work, ctx.author.id, ctx.guild.id, job
+        if job is not None:
+            status, active_job, hours, minutes = await self._run(
+                _db_work_start, ctx.author.id, ctx.guild.id, job
+            )
+            if status == "already_working":
+                await ctx.send(
+                    f"Olet jo töissä ({active_job}). "
+                    f"Valmistuu {hours}h {minutes}min päästä."
+                )
+            else:
+                await ctx.send(
+                    f"Lähdit töihin: **{job}**. "
+                    f"Valmistuu {hours}h päästä. Tule hakemaan palkka sitten (`!work`)."
+                )
+            return
+
+        # !work ilman argumenttia — tarkista tilanne
+        status, active_job, a, b, c, d, _ = await self._run(
+            _db_work_status, ctx.author.id, ctx.guild.id
         )
 
-        if status == "cooldown":
-            await ctx.send(f"Töissä käytiin jo. Saatavilla {hours}h {minutes}min päästä.")
-            return
-
-        msg = _JOBS[job]["flavor"] + f" +{payout} \U0001fa99."
-        if debt_paid > 0:
-            msg += f" ({debt_paid} \U0001fa99 meni velan lyhennykseen"
-            if new_debt > 0:
-                msg += f", velkaa jäljellä {new_debt} \U0001fa99"
-            msg += ".)"
-        msg += f" Saldo: {new_balance} \U0001fa99."
-        await ctx.send(msg)
+        if status == "no_job":
+            lines = "\n".join(
+                f"  `!work {j['name']}`  — {j['payout']} \U0001fa99 ({j['cooldown_hours']}h)"
+                for j in _CONFIG["jobs"]
+            )
+            await ctx.send(f"Et ole töissä. Valitse työlaji:\n{lines}")
+        elif status == "working":
+            hours, minutes = a, b
+            await ctx.send(f"Olet töissä ({active_job}). Valmistuu {hours}h {minutes}min päästä.")
+        else:
+            payout, debt_paid, new_debt, new_balance = a, b, c, d
+            msg = _JOBS[active_job]["flavor"] + f" +{payout} \U0001fa99."
+            if debt_paid > 0:
+                msg += f" ({debt_paid} \U0001fa99 meni velan lyhennykseen"
+                if new_debt > 0:
+                    msg += f", velkaa jäljellä {new_debt} \U0001fa99"
+                msg += ".)"
+            msg += f" Saldo: {new_balance} \U0001fa99."
+            await ctx.send(msg)
 
 
 async def setup(bot):
