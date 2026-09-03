@@ -1,0 +1,62 @@
+starting_balance: 1000
+
+loan:
+  max_amount: 1000
+  interest_rate: 0.20
+
+symbols:
+  - emoji: "🎰"
+    name: "RAY"
+    weight: 1
+    payout: 185
+  - emoji: "⭐"
+    name: "Tähti"
+    weight: 6
+    payout: 73
+    wild: true
+  - emoji: "🍒"
+    name: "Kirsikka"
+    weight: 8
+    payout: 22
+    partial_payouts:
+      2: 4
+  - emoji: "🍓"
+    name: "Mansikka"
+    weight: 10
+    payout: 18
+    partial_payouts:
+      2: 4
+  - emoji: "🍊"
+    name: "Appelsiini"
+    weight: 15
+    payout: 13
+  - emoji: "🍇"
+    name: "Viinirypäleet"
+    weight: 18
+    payout: 11
+  - emoji: "🍐"
+    name: "Päärynä"
+    weight: 22
+    payout: 8
+  - emoji: "🍉"
+    name: "Vesimeloni"
+    weight: 26
+    payout: 7
+
+jobs:
+  - name: pullot
+    payout: 50
+    cooldown_hours: 0.5
+    flavor: "Kiertelit kaupungin roskiksia. Löysit 50 pulloa."
+  - name: pizza
+    payout: 150
+    cooldown_hours: 2
+    flavor: "Ajoit pizzaa sateessa koko illan. Tippi oli kehno."
+  - name: raksa
+    payout: 350
+    cooldown_hours: 6
+    flavor: "Olit rakennustyömaalla aamusta iltaan. Selkä hajoaa."
+  - name: konsultti
+    payout: 800
+    cooldown_hours: 12
+    flavor: "Teit 47-sivuisen PowerPoint-esityksen. Laskutit reilusti."
