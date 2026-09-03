@@ -14,6 +14,7 @@ _LOAN_INTEREST = _CONFIG["loan"]["interest_rate"]
 _SYMBOLS = _CONFIG["symbols"]
 _WEIGHTS = [s["weight"] for s in _SYMBOLS]
 _JOBS = {j["name"]: j for j in _CONFIG["jobs"]}
+_PARTIAL_SYMBOLS = [s for s in _SYMBOLS if s.get("partial_payouts")]
 
 _WORK_HELP = "Ansaitse kolikoita töitä tekemällä.\n\nTyölajit:\n" + "\n".join(
     f"  !work {j['name']:<12} — {j['payout']} \U0001fa99 (cooldown {j['cooldown_hours']}h)"
@@ -41,10 +42,20 @@ def _spin():
 def _check_line(grid, payline):
     symbols = [grid[reel][row] for reel, row in payline]
     non_wilds = [s for s in symbols if not s.get("wild")]
+
+    # 3-of-a-kind (wilit korvaavat)
     if not non_wilds:
         return symbols[0]["payout"]
     if len(set(s["name"] for s in non_wilds)) == 1:
         return non_wilds[0]["payout"]
+
+    # Osittaisvoitot (vain oikeat symbolit, ei wiliä) — kirsikka ennen mansikkaa
+    for sym in _PARTIAL_SYMBOLS:
+        count = sum(1 for s in symbols if s["name"] == sym["name"])
+        payout = sym["partial_payouts"].get(count)
+        if payout:
+            return payout
+
     return 0
 
 

@@ -8,32 +8,42 @@ symbols:
   - emoji: "🎰"
     name: "RAY"
     weight: 1
-    payout: 50
+    payout: 100
   - emoji: "⭐"
     name: "Tähti"
     weight: 3
-    payout: 20
+    payout: 40
     wild: true
   - emoji: "🍒"
     name: "Kirsikka"
-    weight: 10
+    weight: 5
+    payout: 12
+    partial_payouts:
+      1: 1
+      2: 2
+  - emoji: "🍓"
+    name: "Mansikka"
+    weight: 7
     payout: 10
+    partial_payouts:
+      1: 1
+      2: 2
   - emoji: "🍊"
     name: "Appelsiini"
     weight: 12
-    payout: 8
+    payout: 11
   - emoji: "🍇"
     name: "Viinirypäleet"
     weight: 14
-    payout: 6
+    payout: 9
   - emoji: "🍐"
     name: "Päärynä"
     weight: 16
-    payout: 5
+    payout: 7
   - emoji: "🍉"
     name: "Vesimeloni"
     weight: 18
-    payout: 4
+    payout: 5
 
 jobs:
   - name: pullot
