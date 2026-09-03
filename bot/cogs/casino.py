@@ -21,17 +21,45 @@ _WORK_HELP = "Ansaitse kolikoita töitä tekemällä.\n\nTyölajit:\n" + "\n".jo
 )
 
 
+# grid[reel][row], reel=0..2 (vasen→oikea), row=0..2 (ylä→ala)
+# Linjojen järjestys alkuperäisen Tuplapotin mukaan:
+# 1=keskirivi, 2=alariivi, 3=yläriivi, 4=diag ↗, 5=diag ↘
+_PAYLINES = [
+    [(0, 1), (1, 1), (2, 1)],  # linja 1: keskirivi
+    [(0, 2), (1, 2), (2, 2)],  # linja 2: alariivi
+    [(0, 0), (1, 0), (2, 0)],  # linja 3: yläriivi
+    [(0, 2), (1, 1), (2, 0)],  # linja 4: diagonaali ↗
+    [(0, 0), (1, 1), (2, 2)],  # linja 5: diagonaali ↘
+]
+
+
 def _spin():
-    return random.choices(_SYMBOLS, weights=_WEIGHTS, k=3)
+    # Palauttaa grid[reel][row] — jokainen ruutu pyörähtää erikseen
+    return [random.choices(_SYMBOLS, weights=_WEIGHTS, k=3) for _ in range(3)]
 
 
-def _calculate_winnings(reels, bet):
-    non_wilds = [r for r in reels if not r.get("wild")]
+def _check_line(grid, payline):
+    symbols = [grid[reel][row] for reel, row in payline]
+    non_wilds = [s for s in symbols if not s.get("wild")]
     if not non_wilds:
-        return bet * reels[0]["payout"]
-    if len(set(r["name"] for r in non_wilds)) == 1:
-        return bet * non_wilds[0]["payout"]
+        return symbols[0]["payout"]
+    if len(set(s["name"] for s in non_wilds)) == 1:
+        return non_wilds[0]["payout"]
     return 0
+
+
+def _calculate_winnings(grid, per_line_bet):
+    line_wins = [
+        per_line_bet * _check_line(grid, line)
+        for line in _PAYLINES
+    ]
+    winning = [w for w in line_wins if w > 0]
+    if not winning:
+        return 0, []
+    # Suurin voitto × voittavien linjojen määrä
+    total = max(winning) * len(winning)
+    winning_lines = [i + 1 for i, w in enumerate(line_wins) if w > 0]
+    return total, winning_lines
 
 
 def _db_get_or_create(user_id, guild_id):
@@ -63,7 +91,8 @@ def _db_update(user_id, guild_id, **kwargs):
     conn.close()
 
 
-def _db_slot(user_id, guild_id, bet, reels):
+def _db_slot(user_id, guild_id, per_line_bet, grid):
+    total_bet = per_line_bet * 5
     conn = sqlite3.connect(DB_PATH)
     row = conn.execute(
         "SELECT balance, debt, pending_winnings FROM casino_balance WHERE user_id = ? AND guild_id = ?",
@@ -81,29 +110,29 @@ def _db_slot(user_id, guild_id, bet, reels):
 
     if pending > 0:
         conn.close()
-        return "pending", balance, debt, pending, 0
+        return "pending", balance, pending, 0, []
 
-    if balance < bet:
+    if balance < total_bet:
         conn.close()
-        return "broke", balance, debt, pending, 0
+        return "broke", balance, 0, 0, []
 
-    winnings = _calculate_winnings(reels, bet)
+    winnings, winning_lines = _calculate_winnings(grid, per_line_bet)
     if winnings > 0:
         conn.execute(
             "UPDATE casino_balance SET balance = ?, pending_winnings = ? WHERE user_id = ? AND guild_id = ?",
-            (balance - bet, winnings, user_id, guild_id),
+            (balance - total_bet, winnings, user_id, guild_id),
         )
         conn.commit()
         conn.close()
-        return "win", balance - bet, debt, 0, winnings
+        return "win", balance - total_bet, 0, winnings, winning_lines
     else:
         conn.execute(
             "UPDATE casino_balance SET balance = ? WHERE user_id = ? AND guild_id = ?",
-            (balance - bet, user_id, guild_id),
+            (balance - total_bet, user_id, guild_id),
         )
         conn.commit()
         conn.close()
-        return "loss", balance - bet, debt, 0, 0
+        return "loss", balance - total_bet, 0, 0, []
 
 
 def _db_double(user_id, guild_id, tulos):
@@ -258,22 +287,25 @@ class Casino(commands.Cog, name="casino"):
             msg += f" | Velka: {debt} \U0001fa99"
         await ctx.send(msg)
 
-    @commands.command(name="slot", aliases=["slots"], help="Pyöritä slottia.\n\nKäyttö: `!slot <panos>`")
+    @commands.command(
+        name="slot",
+        aliases=["slots"],
+        help="Pyöritä slottia. Panos per linja, 5 linjaa = 5× panos yhteensä.\n\nKäyttö: `!slot <panos per linja>`",
+    )
     async def slot(self, ctx, bet: str = None):
         try:
             bet_int = int(bet) if bet is not None else None
         except ValueError:
-            await ctx.send("Käyttö: `!slot <panos>`")
+            await ctx.send("Käyttö: `!slot <panos per linja>` (5 linjaa, yhteensä panos × 5)")
             return
 
         if bet_int is None or bet_int <= 0:
-            await ctx.send("Käyttö: `!slot <panos>`")
+            await ctx.send("Käyttö: `!slot <panos per linja>` (5 linjaa, yhteensä panos × 5)")
             return
 
-        reels = _spin()
-        result_str = " | ".join(r["emoji"] for r in reels)
-        status, balance, debt, pending, winnings = await self._run(
-            _db_slot, ctx.author.id, ctx.guild.id, bet_int, reels
+        grid = _spin()
+        status, balance, pending, winnings, winning_lines = await self._run(
+            _db_slot, ctx.author.id, ctx.guild.id, bet_int, grid
         )
 
         if status == "pending":
@@ -281,16 +313,30 @@ class Casino(commands.Cog, name="casino"):
                 f"Sinulla on {pending} \U0001fa99 odottamassa. "
                 f"Ota ulos (`!collect`) tai tuplaa (`!double kruuna/klaava`)."
             )
-        elif status == "broke":
-            await ctx.send(f"Ei riitä kolikoita. Saldosi on {balance} \U0001fa99.")
-        elif status == "win":
+            return
+        if status == "broke":
             await ctx.send(
-                f"{result_str}\n"
-                f"**Voitit {winnings} \U0001fa99!** "
+                f"Ei riitä kolikoita. Saldosi on {balance} \U0001fa99 "
+                f"(tarvitaan {bet_int * 5} \U0001fa99)."
+            )
+            return
+
+        # Rakennetaan 3×3 ruudukko — grid[reel][row], näytetään riveittäin
+        rows = [
+            " | ".join(grid[reel][row]["emoji"] for reel in range(3))
+            for row in range(3)
+        ]
+        grid_str = "\n".join(rows)
+
+        if status == "win":
+            lines_str = ", ".join(str(l) for l in winning_lines)
+            await ctx.send(
+                f"```\n{grid_str}\n```"
+                f"**Voitit {winnings} \U0001fa99!** (linja{'t' if len(winning_lines) > 1 else ''} {lines_str})\n"
                 f"Tuplaa (`!double kruuna/klaava`) tai ota ulos (`!collect`)."
             )
         else:
-            await ctx.send(f"{result_str}\nEi voittoa. Saldo: {balance} \U0001fa99.")
+            await ctx.send(f"```\n{grid_str}\n```Ei voittoa. Saldo: {balance} \U0001fa99.")
 
     @commands.command(
         name="double",
