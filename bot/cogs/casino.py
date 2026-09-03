@@ -12,9 +12,11 @@ _STARTING_BALANCE = _CONFIG["starting_balance"]
 _LOAN_MAX = _CONFIG["loan"]["max_amount"]
 _LOAN_INTEREST = _CONFIG["loan"]["interest_rate"]
 _SYMBOLS = _CONFIG["symbols"]
-_WEIGHTS = [s["weight"] for s in _SYMBOLS]
 _JOBS = {j["name"]: j for j in _CONFIG["jobs"]}
-_PARTIAL_SYMBOLS = [s for s in _SYMBOLS if s.get("partial_payouts")]
+
+_NORMAL_SYMBOLS = [s for s in _SYMBOLS if not s.get("last_reel_only")]
+_NORMAL_WEIGHTS = [s["weight"] for s in _NORMAL_SYMBOLS]
+_ALL_WEIGHTS = [s["weight"] for s in _SYMBOLS]
 
 def _fmt_duration(hours):
     if hours < 1:
@@ -44,25 +46,37 @@ _PAYLINES = [
 
 def _spin():
     # Palauttaa grid[reel][row] — jokainen ruutu pyörähtää erikseen
-    return [random.choices(_SYMBOLS, weights=_WEIGHTS, k=3) for _ in range(3)]
+    # Reels 0-1: vain normaalit symbolit. Reel 2: myös tähti ja mansikka.
+    reels = [random.choices(_NORMAL_SYMBOLS, weights=_NORMAL_WEIGHTS, k=3) for _ in range(2)]
+    reels.append(random.choices(_SYMBOLS, weights=_ALL_WEIGHTS, k=3))
+    return reels
 
 
 def _check_line(grid, payline):
-    symbols = [grid[reel][row] for reel, row in payline]
-    non_wilds = [s for s in symbols if not s.get("wild")]
+    s1 = grid[payline[0][0]][payline[0][1]]
+    s2 = grid[payline[1][0]][payline[1][1]]
+    s3 = grid[payline[2][0]][payline[2][1]]
 
-    # 3-of-a-kind (wilit korvaavat)
-    if not non_wilds:
-        return symbols[0]["payout"]
-    if len(set(s["name"] for s in non_wilds)) == 1:
-        return non_wilds[0]["payout"]
+    # 3oaK
+    if s1["name"] == s2["name"] == s3["name"]:
+        return s1.get("payout", 0)
 
-    # Osittaisvoitot (vain oikeat symbolit, ei wiliä) — kirsikka ennen mansikkaa
-    for sym in _PARTIAL_SYMBOLS:
-        count = sum(1 for s in symbols if s["name"] == sym["name"])
-        payout = sym["partial_payouts"].get(count)
-        if payout:
-            return payout
+    # 2+wild: tähti viimeisenä (reel 2), kaksi samaa edessä, ei cherry-symboli
+    if s3.get("wild") and s1["name"] == s2["name"] and not s1.get("cherry"):
+        return s1.get("two_plus_wild_payout", 0)
+
+    # Kirsikka/mansikka — luetaan vasemmalta oikealle
+    if s1.get("cherry"):
+        if s2.get("cherry"):
+            # 3 kirsikkaa jo käsitelty 3oaK:ssa
+            if s3.get("cherry_sub"):
+                return s1["payout"]                      # 2 kirsikka + mansikka
+            return s1["partial_payouts"].get(2, 0)       # 2 kirsikka + muu
+        return s1["partial_payouts"].get(1, 0)           # 1 kirsikka
+
+    # Mansikka yksin (s1 ei ole kirsikka)
+    if s3.get("cherry_sub"):
+        return s3["payout"]
 
     return 0
 
@@ -75,8 +89,7 @@ def _calculate_winnings(grid, per_line_bet):
     winning = [w for w in line_wins if w > 0]
     if not winning:
         return 0, []
-    # Suurin voitto × voittavien linjojen määrä
-    total = max(winning) * len(winning)
+    total = sum(winning)
     winning_lines = [i + 1 for i, w in enumerate(line_wins) if w > 0]
     return total, winning_lines
 
@@ -351,6 +364,41 @@ def _db_work_status(user_id, guild_id):
     return "done", job, payout, debt_paid, new_debt, new_balance, 0
 
 
+class _ChannelNotAllowed(commands.CheckFailure):
+    pass
+
+
+def _db_channel_get(guild_id):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        "SELECT channel_id FROM casino_allowed_channels WHERE guild_id = ?",
+        (guild_id,),
+    ).fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def _db_channel_set(guild_id, channel_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        "INSERT OR REPLACE INTO casino_allowed_channels (guild_id, channel_id) VALUES (?, ?)",
+        (guild_id, channel_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _db_channel_clear(guild_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("DELETE FROM casino_allowed_channels WHERE guild_id = ?", (guild_id,))
+    conn.commit()
+    conn.close()
+
+
+def _db_channel_is_allowed(guild_id, channel_id):
+    return _db_channel_get(guild_id) == channel_id
+
+
 class Casino(commands.Cog, name="casino"):
     def __init__(self, bot):
         self.bot = bot
@@ -368,12 +416,14 @@ class Casino(commands.Cog, name="casino"):
         finished = await self._run(_db_collect_finished_jobs)
         if not finished:
             return
-        # Luetaan ilmoituskanava release_config:sta (sama kuin f1/release käyttää)
-        channel_id = await self._run(self._get_notify_channel_id)
-        channel = self.bot.get_channel(channel_id) if channel_id else None
-        if channel is None:
-            return
+        channel_cache = {}
         for user_id, guild_id, job, payout, debt_paid, new_debt, new_balance in finished:
+            if guild_id not in channel_cache:
+                channel_id = await self._run(_db_channel_get, guild_id)
+                channel_cache[guild_id] = self.bot.get_channel(channel_id) if channel_id else None
+            channel = channel_cache[guild_id]
+            if channel is None:
+                continue
             job_cfg = _JOBS.get(job, {})
             msg = f"<@{user_id}> {job_cfg.get('flavor', f'Työ {job} valmis.')} +{payout} \U0001fa99."
             if debt_paid > 0:
@@ -384,18 +434,36 @@ class Casino(commands.Cog, name="casino"):
             msg += f" Saldo: {new_balance} \U0001fa99."
             await channel.send(msg)
 
-    @staticmethod
-    def _get_notify_channel_id():
-        conn = sqlite3.connect(DB_PATH)
-        row = conn.execute(
-            "SELECT value FROM release_config WHERE key = 'channel_id'"
-        ).fetchone()
-        conn.close()
-        return int(row[0]) if row else None
-
     @_job_notifier.before_loop
     async def _before_notifier(self):
         await self.bot.wait_until_ready()
+
+    async def cog_check(self, ctx):
+        if ctx.command.name == "casinochannel":
+            return True
+        allowed = await self._run(_db_channel_is_allowed, ctx.guild.id, ctx.channel.id)
+        if not allowed:
+            raise _ChannelNotAllowed()
+        return True
+
+    async def cog_command_error(self, ctx, error):
+        if isinstance(error, _ChannelNotAllowed):
+            channel_id = await self._run(_db_channel_get, ctx.guild.id)
+            if channel_id:
+                await ctx.send(f"Kasino on kiinni. Mene uhkapelaamaan: <#{channel_id}>")
+            else:
+                await ctx.send("Kasino on kiinni.")
+
+    @commands.command(name="casinochannel", help="Aseta/poista tämä kanava kasino-kanavaksi. Vaatii manage_guild.")
+    @commands.has_permissions(manage_guild=True)
+    async def casinochannel(self, ctx):
+        current = await self._run(_db_channel_get, ctx.guild.id)
+        if current == ctx.channel.id:
+            await self._run(_db_channel_clear, ctx.guild.id)
+            await ctx.send("Kasino-kanava poistettu. Kasino on nyt estetty kaikkialla.")
+        else:
+            await self._run(_db_channel_set, ctx.guild.id, ctx.channel.id)
+            await ctx.send(f"Kasino-kanava asetettu: {ctx.channel.mention}")
 
     @commands.command(name="balance", aliases=["bal"], help="Näytä oma saldo ja velkatilanne.")
     async def balance(self, ctx):

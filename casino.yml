@@ -8,40 +8,56 @@ symbols:
   - emoji: "🎰"
     name: "RAY"
     weight: 1
-    payout: 185
+    payout: 50
+  - emoji: "🍀"
+    name: "Apila"
+    weight: 2
+    payout: 20
+    two_plus_wild_payout: 15
   - emoji: "⭐"
     name: "Tähti"
     weight: 6
-    payout: 73
     wild: true
+    last_reel_only: true
   - emoji: "🍒"
     name: "Kirsikka"
     weight: 8
-    payout: 22
+    payout: 8
+    cherry: true
     partial_payouts:
       2: 4
+      1: 2
   - emoji: "🍓"
     name: "Mansikka"
     weight: 10
-    payout: 18
-    partial_payouts:
-      2: 4
+    last_reel_only: true
+    cherry_sub: true
+    payout: 4
   - emoji: "🍊"
     name: "Appelsiini"
+    weight: 12
+    payout: 8
+    two_plus_wild_payout: 8
+  - emoji: "🍆"
+    name: "Luumu"
     weight: 15
-    payout: 13
+    payout: 10
+    two_plus_wild_payout: 10
   - emoji: "🍇"
     name: "Viinirypäleet"
     weight: 18
-    payout: 11
+    payout: 15
+    two_plus_wild_payout: 10
   - emoji: "🍐"
     name: "Päärynä"
-    weight: 22
-    payout: 8
+    weight: 20
+    payout: 14
+    two_plus_wild_payout: 9
   - emoji: "🍉"
     name: "Vesimeloni"
-    weight: 26
-    payout: 7
+    weight: 24
+    payout: 14
+    two_plus_wild_payout: 9
 
 jobs:
   - name: pullot
