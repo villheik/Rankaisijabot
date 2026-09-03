@@ -400,13 +400,6 @@ def _db_channel_list(guild_id):
 
 def _db_channel_is_allowed(guild_id, channel_id):
     conn = sqlite3.connect(DB_PATH)
-    count = conn.execute(
-        "SELECT COUNT(*) FROM casino_allowed_channels WHERE guild_id = ?",
-        (guild_id,),
-    ).fetchone()[0]
-    if count == 0:
-        conn.close()
-        return True
     allowed = conn.execute(
         "SELECT 1 FROM casino_allowed_channels WHERE guild_id = ? AND channel_id = ?",
         (guild_id, channel_id),
@@ -475,6 +468,8 @@ class Casino(commands.Cog, name="casino"):
             if channels:
                 mentions = " ".join(f"<#{c}>" for c in channels)
                 await ctx.send(f"Kasino on kiinni. Mene uhkapelaamaan jollekin näistä kanavista: {mentions}")
+            else:
+                await ctx.send("Kasino on kiinni.")
 
     @commands.command(name="casinochannel", help="Lisää/poista tämä kanava casino-whitelist'iltä. Vaatii manage_guild.")
     @commands.has_permissions(manage_guild=True)
