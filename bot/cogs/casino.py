@@ -473,8 +473,8 @@ class Casino(commands.Cog, name="casino"):
         if isinstance(error, _ChannelNotAllowed):
             channels = await self._run(_db_channel_list, ctx.guild.id)
             if channels:
-                mentions = ", ".join(f"<#{c}>" for c in channels)
-                await ctx.send(f"Casino toimii vain kanavilla: {mentions}")
+                mentions = " ".join(f"<#{c}>" for c in channels)
+                await ctx.send(f"Kasino on kiinni. Mene uhkapelaamaan jollekin näistä kanavista: {mentions}")
 
     @commands.command(name="casinochannel", help="Lisää/poista tämä kanava casino-whitelist'iltä. Vaatii manage_guild.")
     @commands.has_permissions(manage_guild=True)
