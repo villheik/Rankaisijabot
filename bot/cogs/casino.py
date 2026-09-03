@@ -368,44 +368,35 @@ class _ChannelNotAllowed(commands.CheckFailure):
     pass
 
 
-def _db_channel_add(guild_id, channel_id):
+def _db_channel_get(guild_id):
     conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        "INSERT OR IGNORE INTO casino_allowed_channels (guild_id, channel_id) VALUES (?, ?)",
-        (guild_id, channel_id),
-    )
-    conn.commit()
-    conn.close()
-
-
-def _db_channel_remove(guild_id, channel_id):
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        "DELETE FROM casino_allowed_channels WHERE guild_id = ? AND channel_id = ?",
-        (guild_id, channel_id),
-    )
-    conn.commit()
-    conn.close()
-
-
-def _db_channel_list(guild_id):
-    conn = sqlite3.connect(DB_PATH)
-    rows = conn.execute(
+    row = conn.execute(
         "SELECT channel_id FROM casino_allowed_channels WHERE guild_id = ?",
         (guild_id,),
-    ).fetchall()
+    ).fetchone()
     conn.close()
-    return [r[0] for r in rows]
+    return row[0] if row else None
+
+
+def _db_channel_set(guild_id, channel_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        "INSERT OR REPLACE INTO casino_allowed_channels (guild_id, channel_id) VALUES (?, ?)",
+        (guild_id, channel_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _db_channel_clear(guild_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("DELETE FROM casino_allowed_channels WHERE guild_id = ?", (guild_id,))
+    conn.commit()
+    conn.close()
 
 
 def _db_channel_is_allowed(guild_id, channel_id):
-    conn = sqlite3.connect(DB_PATH)
-    allowed = conn.execute(
-        "SELECT 1 FROM casino_allowed_channels WHERE guild_id = ? AND channel_id = ?",
-        (guild_id, channel_id),
-    ).fetchone()
-    conn.close()
-    return allowed is not None
+    return _db_channel_get(guild_id) == channel_id
 
 
 class Casino(commands.Cog, name="casino"):
@@ -425,12 +416,14 @@ class Casino(commands.Cog, name="casino"):
         finished = await self._run(_db_collect_finished_jobs)
         if not finished:
             return
-        # Luetaan ilmoituskanava release_config:sta (sama kuin f1/release käyttää)
-        channel_id = await self._run(self._get_notify_channel_id)
-        channel = self.bot.get_channel(channel_id) if channel_id else None
-        if channel is None:
-            return
+        channel_cache = {}
         for user_id, guild_id, job, payout, debt_paid, new_debt, new_balance in finished:
+            if guild_id not in channel_cache:
+                channel_id = await self._run(_db_channel_get, guild_id)
+                channel_cache[guild_id] = self.bot.get_channel(channel_id) if channel_id else None
+            channel = channel_cache[guild_id]
+            if channel is None:
+                continue
             job_cfg = _JOBS.get(job, {})
             msg = f"<@{user_id}> {job_cfg.get('flavor', f'Työ {job} valmis.')} +{payout} \U0001fa99."
             if debt_paid > 0:
@@ -440,15 +433,6 @@ class Casino(commands.Cog, name="casino"):
                 msg += ".)"
             msg += f" Saldo: {new_balance} \U0001fa99."
             await channel.send(msg)
-
-    @staticmethod
-    def _get_notify_channel_id():
-        conn = sqlite3.connect(DB_PATH)
-        row = conn.execute(
-            "SELECT value FROM release_config WHERE key = 'channel_id'"
-        ).fetchone()
-        conn.close()
-        return int(row[0]) if row else None
 
     @_job_notifier.before_loop
     async def _before_notifier(self):
@@ -464,30 +448,22 @@ class Casino(commands.Cog, name="casino"):
 
     async def cog_command_error(self, ctx, error):
         if isinstance(error, _ChannelNotAllowed):
-            channels = await self._run(_db_channel_list, ctx.guild.id)
-            if channels:
-                mentions = " ".join(f"<#{c}>" for c in channels)
-                await ctx.send(f"Kasino on kiinni. Mene uhkapelaamaan jollekin näistä kanavista: {mentions}")
+            channel_id = await self._run(_db_channel_get, ctx.guild.id)
+            if channel_id:
+                await ctx.send(f"Kasino on kiinni. Mene uhkapelaamaan: <#{channel_id}>")
             else:
                 await ctx.send("Kasino on kiinni.")
 
-    @commands.command(name="casinochannel", help="Lisää/poista tämä kanava casino-whitelist'iltä. Vaatii manage_guild.")
+    @commands.command(name="casinochannel", help="Aseta/poista tämä kanava kasino-kanavaksi. Vaatii manage_guild.")
     @commands.has_permissions(manage_guild=True)
     async def casinochannel(self, ctx):
-        channels = await self._run(_db_channel_list, ctx.guild.id)
-        if ctx.channel.id in channels:
-            await self._run(_db_channel_remove, ctx.guild.id, ctx.channel.id)
-            channels.remove(ctx.channel.id)
-            if not channels:
-                await ctx.send("Kanava poistettu. Casino sallittu nyt kaikilla kanavilla.")
-            else:
-                mentions = ", ".join(f"<#{c}>" for c in channels)
-                await ctx.send(f"Kanava poistettu. Casino-kanavat: {mentions}")
+        current = await self._run(_db_channel_get, ctx.guild.id)
+        if current == ctx.channel.id:
+            await self._run(_db_channel_clear, ctx.guild.id)
+            await ctx.send("Kasino-kanava poistettu. Kasino on nyt estetty kaikkialla.")
         else:
-            await self._run(_db_channel_add, ctx.guild.id, ctx.channel.id)
-            channels.append(ctx.channel.id)
-            mentions = ", ".join(f"<#{c}>" for c in channels)
-            await ctx.send(f"Kanava lisätty. Casino-kanavat: {mentions}")
+            await self._run(_db_channel_set, ctx.guild.id, ctx.channel.id)
+            await ctx.send(f"Kasino-kanava asetettu: {ctx.channel.mention}")
 
     @commands.command(name="balance", aliases=["bal"], help="Näytä oma saldo ja velkatilanne.")
     async def balance(self, ctx):
