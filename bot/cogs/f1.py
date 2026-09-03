@@ -124,7 +124,7 @@ class F1(commands.Cog, name="f1"):
         conn = sqlite3.connect(DB_PATH)
         try:
             row = conn.execute(
-                "SELECT value FROM release_config WHERE key = 'channel_id'"
+                "SELECT value FROM release_config WHERE key = 'f1_channel_id'"
             ).fetchone()
         except Exception:
             return
@@ -229,6 +229,28 @@ class F1(commands.Cog, name="f1"):
             conn.commit()
             conn.close()
             await context.send(f"{context.author.mention} lisätty F1-ilmoituslistalle.")
+
+    @commands.command(name="f1channel")
+    @commands.has_permissions(manage_guild=True)
+    async def f1channel(self, ctx):
+        conn = sqlite3.connect(DB_PATH)
+        row = conn.execute(
+            "SELECT value FROM release_config WHERE key = 'f1_channel_id'"
+        ).fetchone()
+        current = row[0] if row else None
+        if current == str(ctx.channel.id):
+            conn.execute("DELETE FROM release_config WHERE key = 'f1_channel_id'")
+            conn.commit()
+            conn.close()
+            await ctx.send("F1-kanava poistettu.")
+        else:
+            conn.execute(
+                "INSERT OR REPLACE INTO release_config (key, value) VALUES ('f1_channel_id', ?)",
+                (str(ctx.channel.id),),
+            )
+            conn.commit()
+            conn.close()
+            await ctx.send(f"F1-ilmoitukset asetettu kanavalle {ctx.channel.mention}.")
 
     @session_reminder.before_loop
     async def before_reminder(self):

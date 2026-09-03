@@ -76,10 +76,15 @@ class Release(commands.Cog, name="release"):
         self._set("last_tag", tag)
 
     @commands.command(name="releasechannel")
-    async def releasechannel(self, ctx, channel: Optional[discord.TextChannel] = None):
-        target = channel or ctx.channel
-        self._set("channel_id", str(target.id))
-        await ctx.send(f"Release-ilmoitukset asetettu kanavalle {target.mention}.")
+    @commands.has_permissions(manage_guild=True)
+    async def releasechannel(self, ctx):
+        current = self._get("channel_id")
+        if current == str(ctx.channel.id):
+            self._set("channel_id", "")
+            await ctx.send("Release-kanava poistettu.")
+        else:
+            self._set("channel_id", str(ctx.channel.id))
+            await ctx.send(f"Release-ilmoitukset asetettu kanavalle {ctx.channel.mention}.")
 
 
 async def setup(bot):
