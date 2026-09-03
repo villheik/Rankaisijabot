@@ -16,8 +16,14 @@ _WEIGHTS = [s["weight"] for s in _SYMBOLS]
 _JOBS = {j["name"]: j for j in _CONFIG["jobs"]}
 _PARTIAL_SYMBOLS = [s for s in _SYMBOLS if s.get("partial_payouts")]
 
+def _fmt_duration(hours):
+    if hours < 1:
+        return f"{int(hours * 60)}min"
+    return f"{int(hours)}h"
+
+
 _WORK_HELP = "Ansaitse kolikoita töitä tekemällä.\n\nTyölajit:\n" + "\n".join(
-    f"  !work {j['name']:<12} — {j['payout']} \U0001fa99 (cooldown {j['cooldown_hours']}h)"
+    f"  !work {j['name']:<12} — {j['payout']} \U0001fa99 (cooldown {_fmt_duration(j['cooldown_hours'])})"
     for j in _CONFIG["jobs"]
 )
 
@@ -459,7 +465,7 @@ class Casino(commands.Cog, name="casino"):
     async def work(self, ctx, job: str = None):
         if job is not None and job not in _JOBS:
             lines = "\n".join(
-                f"  `!work {j['name']}`  — {j['payout']} \U0001fa99 ({j['cooldown_hours']}h)"
+                f"  `!work {j['name']}`  — {j['payout']} \U0001fa99 ({_fmt_duration(j['cooldown_hours'])})"
                 for j in _CONFIG["jobs"]
             )
             await ctx.send(f"Tuntematon työlaji. Valitse:\n{lines}")
@@ -477,7 +483,7 @@ class Casino(commands.Cog, name="casino"):
             else:
                 await ctx.send(
                     f"Lähdit töihin: **{job}**. "
-                    f"Valmistuu {hours}h päästä. Tule hakemaan palkka sitten (`!work`)."
+                    f"Valmistuu {_fmt_duration(hours)} päästä. Tule hakemaan palkka sitten (`!work`)."
                 )
             return
 

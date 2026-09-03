@@ -46,17 +46,17 @@ symbols:
 jobs:
   - name: pullot
     payout: 50
-    cooldown_hours: 2
+    cooldown_hours: 0.5
     flavor: "Kiertelit kaupungin roskiksia. Löysit 50 pulloa."
   - name: pizza
     payout: 150
-    cooldown_hours: 6
+    cooldown_hours: 2
     flavor: "Ajoit pizzaa sateessa koko illan. Tippi oli kehno."
   - name: raksa
     payout: 350
-    cooldown_hours: 12
+    cooldown_hours: 6
     flavor: "Olit rakennustyömaalla aamusta iltaan. Selkä hajoaa."
   - name: konsultti
     payout: 800
-    cooldown_hours: 24
+    cooldown_hours: 12
     flavor: "Teit 47-sivuisen PowerPoint-esityksen. Laskutit reilusti."
