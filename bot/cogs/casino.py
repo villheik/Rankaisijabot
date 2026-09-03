@@ -31,6 +31,8 @@ _WORK_HELP = "Ansaitse kolikoita töitä tekemällä.\n\nTyölajit:\n" + "\n".jo
 # grid[reel][row], reel=0..2 (vasen→oikea), row=0..2 (ylä→ala)
 # Linjojen järjestys alkuperäisen Tuplapotin mukaan:
 # 1=keskirivi, 2=alariivi, 3=yläriivi, 4=diag ↗, 5=diag ↘
+_ROW_LABEL = ["3️⃣", "1️⃣", "2️⃣"]  # rivin emoji-numero (ylä=L3, keski=L1, ala=L2)
+_LINE_DESC = {1: "─ keskirivi", 2: "─ alariivi", 3: "─ yläriivi", 4: "↗", 5: "↘"}
 _PAYLINES = [
     [(0, 1), (1, 1), (2, 1)],  # linja 1: keskirivi
     [(0, 2), (1, 2), (2, 2)],  # linja 2: alariivi
@@ -366,22 +368,23 @@ class Casino(commands.Cog, name="casino"):
             )
             return
 
-        # Rakennetaan 3×3 ruudukko — grid[reel][row], näytetään riveittäin
-        rows = [
-            " | ".join(grid[reel][row]["emoji"] for reel in range(3))
+        # Ruudukko omana viestinään (pelkkiä emojeja → jumbo-koko Discordissa)
+        grid_rows = [
+            _ROW_LABEL[row] + " " + " ".join(grid[reel][row]["emoji"] for reel in range(3))
             for row in range(3)
         ]
-        grid_str = "\n".join(rows)
+        await ctx.send("\n".join(grid_rows))
 
         if status == "win":
-            lines_str = ", ".join(str(l) for l in winning_lines)
+            lines_str = ", ".join(
+                f"linja {l} {_LINE_DESC[l]}" for l in winning_lines
+            )
             await ctx.send(
-                f"```\n{grid_str}\n```"
-                f"**Voitit {winnings} \U0001fa99!** (linja{'t' if len(winning_lines) > 1 else ''} {lines_str})\n"
+                f"**Voitit {winnings} \U0001fa99!** ({lines_str})\n"
                 f"Tuplaa (`!double kruuna/klaava`) tai ota ulos (`!collect`)."
             )
         else:
-            await ctx.send(f"```\n{grid_str}\n```Ei voittoa. Saldo: {balance} \U0001fa99.")
+            await ctx.send(f"Ei voittoa. Saldo: {balance} \U0001fa99.")
 
     @commands.command(
         name="double",
