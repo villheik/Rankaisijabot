@@ -12,9 +12,11 @@ _STARTING_BALANCE = _CONFIG["starting_balance"]
 _LOAN_MAX = _CONFIG["loan"]["max_amount"]
 _LOAN_INTEREST = _CONFIG["loan"]["interest_rate"]
 _SYMBOLS = _CONFIG["symbols"]
-_WEIGHTS = [s["weight"] for s in _SYMBOLS]
 _JOBS = {j["name"]: j for j in _CONFIG["jobs"]}
-_PARTIAL_SYMBOLS = [s for s in _SYMBOLS if s.get("partial_payouts")]
+
+_NORMAL_SYMBOLS = [s for s in _SYMBOLS if not s.get("last_reel_only")]
+_NORMAL_WEIGHTS = [s["weight"] for s in _NORMAL_SYMBOLS]
+_ALL_WEIGHTS = [s["weight"] for s in _SYMBOLS]
 
 def _fmt_duration(hours):
     if hours < 1:
@@ -44,25 +46,37 @@ _PAYLINES = [
 
 def _spin():
     # Palauttaa grid[reel][row] — jokainen ruutu pyörähtää erikseen
-    return [random.choices(_SYMBOLS, weights=_WEIGHTS, k=3) for _ in range(3)]
+    # Reels 0-1: vain normaalit symbolit. Reel 2: myös tähti ja mansikka.
+    reels = [random.choices(_NORMAL_SYMBOLS, weights=_NORMAL_WEIGHTS, k=3) for _ in range(2)]
+    reels.append(random.choices(_SYMBOLS, weights=_ALL_WEIGHTS, k=3))
+    return reels
 
 
 def _check_line(grid, payline):
-    symbols = [grid[reel][row] for reel, row in payline]
-    non_wilds = [s for s in symbols if not s.get("wild")]
+    s1 = grid[payline[0][0]][payline[0][1]]
+    s2 = grid[payline[1][0]][payline[1][1]]
+    s3 = grid[payline[2][0]][payline[2][1]]
 
-    # 3-of-a-kind (wilit korvaavat)
-    if not non_wilds:
-        return symbols[0]["payout"]
-    if len(set(s["name"] for s in non_wilds)) == 1:
-        return non_wilds[0]["payout"]
+    # 3oaK
+    if s1["name"] == s2["name"] == s3["name"]:
+        return s1.get("payout", 0)
 
-    # Osittaisvoitot (vain oikeat symbolit, ei wiliä) — kirsikka ennen mansikkaa
-    for sym in _PARTIAL_SYMBOLS:
-        count = sum(1 for s in symbols if s["name"] == sym["name"])
-        payout = sym["partial_payouts"].get(count)
-        if payout:
-            return payout
+    # 2+wild: tähti viimeisenä (reel 2), kaksi samaa edessä, ei cherry-symboli
+    if s3.get("wild") and s1["name"] == s2["name"] and not s1.get("cherry"):
+        return s1.get("two_plus_wild_payout", 0)
+
+    # Kirsikka/mansikka — luetaan vasemmalta oikealle
+    if s1.get("cherry"):
+        if s2.get("cherry"):
+            # 3 kirsikkaa jo käsitelty 3oaK:ssa
+            if s3.get("cherry_sub"):
+                return s1["payout"]                      # 2 kirsikka + mansikka
+            return s1["partial_payouts"].get(2, 0)       # 2 kirsikka + muu
+        return s1["partial_payouts"].get(1, 0)           # 1 kirsikka
+
+    # Mansikka yksin (s1 ei ole kirsikka)
+    if s3.get("cherry_sub"):
+        return s3["payout"]
 
     return 0
 
@@ -75,8 +89,7 @@ def _calculate_winnings(grid, per_line_bet):
     winning = [w for w in line_wins if w > 0]
     if not winning:
         return 0, []
-    # Suurin voitto × voittavien linjojen määrä
-    total = max(winning) * len(winning)
+    total = sum(winning)
     winning_lines = [i + 1 for i, w in enumerate(line_wins) if w > 0]
     return total, winning_lines
 
