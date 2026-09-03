@@ -32,7 +32,7 @@ _WORK_HELP = "Ansaitse kolikoita töitä tekemällä.\n\nTyölajit:\n" + "\n".jo
 # Linjojen järjestys alkuperäisen Tuplapotin mukaan:
 # 1=keskirivi, 2=alariivi, 3=yläriivi, 4=diag ↗, 5=diag ↘
 _ROW_LABEL = ["3️⃣", "1️⃣", "2️⃣"]  # rivin emoji-numero (ylä=L3, keski=L1, ala=L2)
-_LINE_DESC = {1: "─ keskirivi", 2: "─ alariivi", 3: "─ yläriivi", 4: "↗", 5: "↘"}
+_LINE_DESC = {1: "keskirivi", 2: "alarivi", 3: "ylärivi", 4: "↗", 5: "↘"}
 _PAYLINES = [
     [(0, 1), (1, 1), (2, 1)],  # linja 1: keskirivi
     [(0, 2), (1, 2), (2, 2)],  # linja 2: alariivi
