@@ -1,0 +1,402 @@
+import random
+import datetime
+import sqlite3
+import yaml
+from discord.ext import commands
+from bot.db import DB_PATH
+
+with open("casino.yml", encoding="UTF-8") as f:
+    _CONFIG = yaml.safe_load(f)
+
+_STARTING_BALANCE = _CONFIG["starting_balance"]
+_LOAN_MAX = _CONFIG["loan"]["max_amount"]
+_LOAN_INTEREST = _CONFIG["loan"]["interest_rate"]
+_SYMBOLS = _CONFIG["symbols"]
+_WEIGHTS = [s["weight"] for s in _SYMBOLS]
+_JOBS = {j["name"]: j for j in _CONFIG["jobs"]}
+
+_WORK_HELP = "Ansaitse kolikoita töitä tekemällä.\n\nTyölajit:\n" + "\n".join(
+    f"  !work {j['name']:<12} — {j['payout']} \U0001fa99 (cooldown {j['cooldown_hours']}h)"
+    for j in _CONFIG["jobs"]
+)
+
+
+def _spin():
+    return random.choices(_SYMBOLS, weights=_WEIGHTS, k=3)
+
+
+def _calculate_winnings(reels, bet):
+    non_wilds = [r for r in reels if not r.get("wild")]
+    if not non_wilds:
+        return bet * reels[0]["payout"]
+    if len(set(r["name"] for r in non_wilds)) == 1:
+        return bet * non_wilds[0]["payout"]
+    return 0
+
+
+def _db_get_or_create(user_id, guild_id):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        "SELECT balance, debt, pending_winnings FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+        (user_id, guild_id),
+    ).fetchone()
+    if row is None:
+        conn.execute(
+            "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings) VALUES (?, ?, ?, 0, 0)",
+            (user_id, guild_id, _STARTING_BALANCE),
+        )
+        conn.commit()
+        row = (_STARTING_BALANCE, 0, 0)
+    conn.close()
+    return row
+
+
+def _db_update(user_id, guild_id, **kwargs):
+    sets = ", ".join(f"{k} = ?" for k in kwargs)
+    vals = list(kwargs.values()) + [user_id, guild_id]
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        f"UPDATE casino_balance SET {sets} WHERE user_id = ? AND guild_id = ?",
+        vals,
+    )
+    conn.commit()
+    conn.close()
+
+
+def _db_slot(user_id, guild_id, bet, reels):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        "SELECT balance, debt, pending_winnings FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+        (user_id, guild_id),
+    ).fetchone()
+    if row is None:
+        conn.execute(
+            "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings) VALUES (?, ?, ?, 0, 0)",
+            (user_id, guild_id, _STARTING_BALANCE),
+        )
+        conn.commit()
+        balance, debt, pending = _STARTING_BALANCE, 0, 0
+    else:
+        balance, debt, pending = row
+
+    if pending > 0:
+        conn.close()
+        return "pending", balance, debt, pending, 0
+
+    if balance < bet:
+        conn.close()
+        return "broke", balance, debt, pending, 0
+
+    winnings = _calculate_winnings(reels, bet)
+    if winnings > 0:
+        conn.execute(
+            "UPDATE casino_balance SET balance = ?, pending_winnings = ? WHERE user_id = ? AND guild_id = ?",
+            (balance - bet, winnings, user_id, guild_id),
+        )
+        conn.commit()
+        conn.close()
+        return "win", balance - bet, debt, 0, winnings
+    else:
+        conn.execute(
+            "UPDATE casino_balance SET balance = ? WHERE user_id = ? AND guild_id = ?",
+            (balance - bet, user_id, guild_id),
+        )
+        conn.commit()
+        conn.close()
+        return "loss", balance - bet, debt, 0, 0
+
+
+def _db_double(user_id, guild_id, tulos):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        "SELECT balance, debt, pending_winnings FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+        (user_id, guild_id),
+    ).fetchone()
+    if row is None or row[2] == 0:
+        conn.close()
+        return "none", 0, 0
+    balance, debt, pending = row
+    if tulos == "win":
+        doubled = pending * 2
+        conn.execute(
+            "UPDATE casino_balance SET pending_winnings = ? WHERE user_id = ? AND guild_id = ?",
+            (doubled, user_id, guild_id),
+        )
+        conn.commit()
+        conn.close()
+        return "win", pending, doubled
+    else:
+        conn.execute(
+            "UPDATE casino_balance SET pending_winnings = 0 WHERE user_id = ? AND guild_id = ?",
+            (user_id, guild_id),
+        )
+        conn.commit()
+        conn.close()
+        return "loss", pending, 0
+
+
+def _db_collect(user_id, guild_id):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        "SELECT balance, debt, pending_winnings FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+        (user_id, guild_id),
+    ).fetchone()
+    if row is None or row[2] == 0:
+        conn.close()
+        return 0, 0, 0, 0
+    balance, debt, pending = row
+    debt_paid = min(debt, pending)
+    new_debt = debt - debt_paid
+    new_balance = balance + (pending - debt_paid)
+    conn.execute(
+        "UPDATE casino_balance SET balance = ?, debt = ?, pending_winnings = 0 WHERE user_id = ? AND guild_id = ?",
+        (new_balance, new_debt, user_id, guild_id),
+    )
+    conn.commit()
+    conn.close()
+    return pending, debt_paid, new_debt, new_balance
+
+
+def _db_loan(user_id, guild_id, amount):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        "SELECT balance, debt, pending_winnings FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+        (user_id, guild_id),
+    ).fetchone()
+    if row is None:
+        conn.execute(
+            "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings) VALUES (?, ?, ?, 0, 0)",
+            (user_id, guild_id, _STARTING_BALANCE),
+        )
+        conn.commit()
+        balance, debt = _STARTING_BALANCE, 0
+    else:
+        balance, debt = row[0], row[1]
+
+    if debt > 0:
+        conn.close()
+        return "existing_debt", debt, 0, 0
+
+    interest = int(amount * _LOAN_INTEREST)
+    new_debt = amount + interest
+    new_balance = balance + amount
+    conn.execute(
+        "UPDATE casino_balance SET balance = ?, debt = ? WHERE user_id = ? AND guild_id = ?",
+        (new_balance, new_debt, user_id, guild_id),
+    )
+    conn.commit()
+    conn.close()
+    return "ok", new_debt, interest, new_balance
+
+
+def _db_work(user_id, guild_id, job):
+    job_cfg = _JOBS[job]
+    now = datetime.datetime.utcnow()
+
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        "SELECT balance, debt, pending_winnings FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+        (user_id, guild_id),
+    ).fetchone()
+    if row is None:
+        conn.execute(
+            "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings) VALUES (?, ?, ?, 0, 0)",
+            (user_id, guild_id, _STARTING_BALANCE),
+        )
+        conn.commit()
+        balance, debt = _STARTING_BALANCE, 0
+    else:
+        balance, debt = row[0], row[1]
+
+    cd_row = conn.execute(
+        "SELECT last_used FROM casino_job_cooldowns WHERE user_id = ? AND guild_id = ? AND job = ?",
+        (user_id, guild_id, job),
+    ).fetchone()
+
+    if cd_row is not None:
+        last_used = datetime.datetime.fromisoformat(cd_row[0])
+        available_at = last_used + datetime.timedelta(hours=job_cfg["cooldown_hours"])
+        if now < available_at:
+            remaining = available_at - now
+            hours, rem = divmod(int(remaining.total_seconds()), 3600)
+            minutes = rem // 60
+            conn.close()
+            return "cooldown", hours, minutes, 0, 0, 0, 0
+
+    conn.execute(
+        "INSERT OR REPLACE INTO casino_job_cooldowns (user_id, guild_id, job, last_used) VALUES (?, ?, ?, ?)",
+        (user_id, guild_id, job, now.isoformat()),
+    )
+    payout = job_cfg["payout"]
+    debt_paid = min(debt, payout)
+    new_debt = debt - debt_paid
+    new_balance = balance + (payout - debt_paid)
+    conn.execute(
+        "UPDATE casino_balance SET balance = ?, debt = ? WHERE user_id = ? AND guild_id = ?",
+        (new_balance, new_debt, user_id, guild_id),
+    )
+    conn.commit()
+    conn.close()
+    return "ok", 0, 0, payout, debt_paid, new_debt, new_balance
+
+
+class Casino(commands.Cog, name="casino"):
+    def __init__(self, bot):
+        self.bot = bot
+
+    async def _run(self, fn, *args):
+        loop = self.bot.loop
+        return await loop.run_in_executor(None, lambda: fn(*args))
+
+    @commands.command(name="balance", aliases=["bal"], help="Näytä oma saldo ja velkatilanne.")
+    async def balance(self, ctx):
+        balance, debt, pending = await self._run(_db_get_or_create, ctx.author.id, ctx.guild.id)
+        msg = f"**{ctx.author.display_name}** — {balance} \U0001fa99"
+        if pending > 0:
+            msg += f" | Odottaa: {pending} \U0001fa99"
+        if debt > 0:
+            msg += f" | Velka: {debt} \U0001fa99"
+        await ctx.send(msg)
+
+    @commands.command(name="slot", aliases=["slots"], help="Pyöritä slottia.\n\nKäyttö: `!slot <panos>`")
+    async def slot(self, ctx, bet: str = None):
+        try:
+            bet_int = int(bet) if bet is not None else None
+        except ValueError:
+            await ctx.send("Käyttö: `!slot <panos>`")
+            return
+
+        if bet_int is None or bet_int <= 0:
+            await ctx.send("Käyttö: `!slot <panos>`")
+            return
+
+        reels = _spin()
+        result_str = " | ".join(r["emoji"] for r in reels)
+        status, balance, debt, pending, winnings = await self._run(
+            _db_slot, ctx.author.id, ctx.guild.id, bet_int, reels
+        )
+
+        if status == "pending":
+            await ctx.send(
+                f"Sinulla on {pending} \U0001fa99 odottamassa. "
+                f"Ota ulos (`!collect`) tai tuplaa (`!double kruuna/klaava`)."
+            )
+        elif status == "broke":
+            await ctx.send(f"Ei riitä kolikoita. Saldosi on {balance} \U0001fa99.")
+        elif status == "win":
+            await ctx.send(
+                f"{result_str}\n"
+                f"**Voitit {winnings} \U0001fa99!** "
+                f"Tuplaa (`!double kruuna/klaava`) tai ota ulos (`!collect`)."
+            )
+        else:
+            await ctx.send(f"{result_str}\nEi voittoa. Saldo: {balance} \U0001fa99.")
+
+    @commands.command(
+        name="double",
+        aliases=["dbl"],
+        help="Tuplaa odottavat voitot arvaamalla kruuna tai klaava.\n\nKäyttö: `!double kruuna` tai `!double klaava`",
+    )
+    async def double(self, ctx, valinta: str = None):
+        if valinta not in ("kruuna", "klaava"):
+            await ctx.send("Käyttö: `!double kruuna` tai `!double klaava`")
+            return
+
+        tulos_kolikko = random.choice(["kruuna", "klaava"])
+        db_tulos = "win" if valinta == tulos_kolikko else "loss"
+        status, pending, doubled = await self._run(_db_double, ctx.author.id, ctx.guild.id, db_tulos)
+
+        if status == "none":
+            await ctx.send("Ei odottavia voittoja tuplattavaksi.")
+        elif status == "win":
+            await ctx.send(
+                f"**{tulos_kolikko.capitalize()}!** {pending} \U0001fa99 → **{doubled} \U0001fa99**. "
+                f"Jatka (`!double kruuna/klaava`) tai ota ulos (`!collect`)."
+            )
+        else:
+            await ctx.send(f"**{tulos_kolikko.capitalize()}!** Hävisit {pending} \U0001fa99.")
+
+    @commands.command(name="collect", aliases=["take"], help="Siirrä odottavat voitot tilille.")
+    async def collect(self, ctx):
+        pending, debt_paid, new_debt, new_balance = await self._run(
+            _db_collect, ctx.author.id, ctx.guild.id
+        )
+
+        if pending == 0:
+            await ctx.send("Ei odottavia voittoja.")
+            return
+
+        msg = f"Tilitetty {pending} \U0001fa99."
+        if debt_paid > 0:
+            msg += f" ({debt_paid} \U0001fa99 meni velan lyhennykseen"
+            if new_debt > 0:
+                msg += f", velkaa jäljellä {new_debt} \U0001fa99"
+            msg += ".)"
+        msg += f" Saldo: {new_balance} \U0001fa99."
+        await ctx.send(msg)
+
+    @commands.command(
+        name="loan",
+        help=f"Ota pikavippi. {int(_LOAN_INTEREST * 100)}% korko, max {_LOAN_MAX} \U0001fa99.\n\nKäyttö: `!loan <summa>`",
+    )
+    async def loan(self, ctx, amount: str = None):
+        try:
+            amount_int = int(amount) if amount is not None else None
+        except ValueError:
+            await ctx.send(
+                f"Käyttö: `!loan <summa>` (max {_LOAN_MAX} \U0001fa99, {int(_LOAN_INTEREST * 100)}% korko)"
+            )
+            return
+
+        if amount_int is None or amount_int <= 0:
+            await ctx.send(
+                f"Käyttö: `!loan <summa>` (max {_LOAN_MAX} \U0001fa99, {int(_LOAN_INTEREST * 100)}% korko)"
+            )
+            return
+
+        if amount_int > _LOAN_MAX:
+            await ctx.send(f"Maksimi laina on {_LOAN_MAX} \U0001fa99.")
+            return
+
+        status, debt, interest, new_balance = await self._run(
+            _db_loan, ctx.author.id, ctx.guild.id, amount_int
+        )
+
+        if status == "existing_debt":
+            await ctx.send(f"Sinulla on jo {debt} \U0001fa99 velkaa. Maksa ensin pois.")
+        else:
+            await ctx.send(
+                f"Pikavippi Paavo nyökkää hyväksyvästi. Sait {amount_int} \U0001fa99. "
+                f"Velka: {debt} \U0001fa99 (sis. {interest} \U0001fa99 korkoa). Maksa takaisin tai muuten."
+            )
+
+    @commands.command(name="work", help=_WORK_HELP)
+    async def work(self, ctx, job: str = None):
+        if job is None or job not in _JOBS:
+            lines = "\n".join(
+                f"  `!work {j['name']}`  — {j['payout']} \U0001fa99 (cooldown {j['cooldown_hours']}h)"
+                for j in _CONFIG["jobs"]
+            )
+            await ctx.send(f"Valitse työlaji:\n{lines}")
+            return
+
+        status, hours, minutes, payout, debt_paid, new_debt, new_balance = await self._run(
+            _db_work, ctx.author.id, ctx.guild.id, job
+        )
+
+        if status == "cooldown":
+            await ctx.send(f"Töissä käytiin jo. Saatavilla {hours}h {minutes}min päästä.")
+            return
+
+        msg = _JOBS[job]["flavor"] + f" +{payout} \U0001fa99."
+        if debt_paid > 0:
+            msg += f" ({debt_paid} \U0001fa99 meni velan lyhennykseen"
+            if new_debt > 0:
+                msg += f", velkaa jäljellä {new_debt} \U0001fa99"
+            msg += ".)"
+        msg += f" Saldo: {new_balance} \U0001fa99."
+        await ctx.send(msg)
+
+
+async def setup(bot):
+    await bot.add_cog(Casino(bot))
