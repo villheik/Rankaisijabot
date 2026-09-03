@@ -290,7 +290,7 @@ class Casino(commands.Cog, name="casino"):
     @commands.command(
         name="slot",
         aliases=["slots"],
-        help="Pyöritä slottia. Panos per linja, 5 linjaa = 5× panos yhteensä.\n\nKäyttö: `!slot <panos per linja>`",
+        help="Pyöritä slottia. Panos jaetaan tasan 5 linjalle (minimi 5 \U0001fa99).\n\nKäyttö: `!slot <panos>`",
     )
     async def slot(self, ctx, bet: str = None):
         try:
@@ -299,13 +299,17 @@ class Casino(commands.Cog, name="casino"):
             await ctx.send("Käyttö: `!slot <panos per linja>` (5 linjaa, yhteensä panos × 5)")
             return
 
-        if bet_int is None or bet_int <= 0:
-            await ctx.send("Käyttö: `!slot <panos per linja>` (5 linjaa, yhteensä panos × 5)")
+        if bet_int is None or bet_int < 5:
+            await ctx.send("Käyttö: `!slot <panos>` (jaetaan tasan 5 linjalle, minimi 5 \U0001fa99)")
             return
 
+        per_line_bet = bet_int // 5
+        total_bet = per_line_bet * 5
         grid = _spin()
+        if total_bet != bet_int:
+            await ctx.send(f"Panos pyöristetty {total_bet} \U0001fa99:ään ({per_line_bet} per linja).")
         status, balance, pending, winnings, winning_lines = await self._run(
-            _db_slot, ctx.author.id, ctx.guild.id, bet_int, grid
+            _db_slot, ctx.author.id, ctx.guild.id, per_line_bet, grid
         )
 
         if status == "pending":
@@ -317,7 +321,7 @@ class Casino(commands.Cog, name="casino"):
         if status == "broke":
             await ctx.send(
                 f"Ei riitä kolikoita. Saldosi on {balance} \U0001fa99 "
-                f"(tarvitaan {bet_int * 5} \U0001fa99)."
+                f"(tarvitaan {per_line_bet * 5} \U0001fa99)."
             )
             return
 
