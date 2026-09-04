@@ -1,5 +1,6 @@
 work:
-  min_hours: 0.0833   # 5 minuuttia
+  min_hours: 0.0833        # 5 minuuttia
+  xp_level_multiplier: 1.5 # XP kerroin per taso (xp = base_hours * multiplier^(level-1))
 
 levels:
   - xp_required: 2        # taso 1 → 2
@@ -11,6 +12,9 @@ levels:
   - xp_required: 8192     # taso 7 → 8
   - xp_required: 32768    # taso 8 → 9
   - xp_required: 131072   # taso 9 → 10
+  - xp_required: 524288   # taso 10 → 11
+  - xp_required: 2097152  # taso 11 → 12
+  - xp_required: 8388608  # taso 12 → 13
 
 jobs:
   - name: pullot

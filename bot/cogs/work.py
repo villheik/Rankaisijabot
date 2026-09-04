@@ -8,6 +8,7 @@ with open("work.yml", encoding="UTF-8") as f:
     _CONFIG = yaml.safe_load(f)
 
 _MIN_HOURS = _CONFIG["work"]["min_hours"]
+_XP_LEVEL_MULTIPLIER = _CONFIG["work"]["xp_level_multiplier"]
 _LEVELS = _CONFIG["levels"]
 _MAX_LEVEL = len(_LEVELS) + 1
 _JOBS = {j["name"]: j for j in _CONFIG["jobs"]}
@@ -18,10 +19,6 @@ for _lvl in _LEVELS:
     _cumulative += _lvl["xp_required"]
     _XP_THRESHOLDS.append(_cumulative)
 
-_JOB_XP_MULTIPLIER = {
-    job["name"]: 1.2 ** i
-    for i, job in enumerate(_CONFIG["jobs"])
-}
 
 
 def _level_from_xp(xp: float) -> int:
@@ -270,7 +267,8 @@ class Work(commands.Cog, name="work"):
         channel_cache = {}
         for user_id, guild_id, job_name, payout, debt_paid, new_debt, new_balance in finished:
             job = _JOBS.get(job_name, {})
-            xp_gain = job.get("base_hours", 0) * _JOB_XP_MULTIPLIER.get(job_name, 1.0)
+            _, level_at_finish = _db_get_xp(user_id, guild_id)
+            xp_gain = job.get("base_hours", 0) * (_XP_LEVEL_MULTIPLIER ** (level_at_finish - 1))
             new_xp, new_level, leveled_up = await self._run(_db_add_xp, user_id, guild_id, xp_gain)
 
             if guild_id not in channel_cache:
