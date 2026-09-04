@@ -8,6 +8,7 @@ with open("work.yml", encoding="UTF-8") as f:
     _CONFIG = yaml.safe_load(f)
 
 _MIN_HOURS = _CONFIG["work"]["min_hours"]
+_SPEED_MULTIPLIER = _CONFIG["work"]["speed_multiplier"]
 _XP_LEVEL_MULTIPLIER = _CONFIG["work"]["xp_level_multiplier"]
 _LEVELS = _CONFIG["levels"]
 _MAX_LEVEL = len(_LEVELS) + 1
@@ -31,8 +32,13 @@ def _level_from_xp(xp: float) -> int:
     return min(level, _MAX_LEVEL)
 
 
-def _multiplier(level: int) -> int:
-    return 2 ** (level - 1)
+def _multiplier(level: int) -> float:
+    return _SPEED_MULTIPLIER ** (level - 1)
+
+
+def _fmt_multiplier(level: int) -> str:
+    m = _multiplier(level)
+    return f"{m:.1f}" if m < 10 else str(round(m))
 
 
 def _actual_hours(base_hours: float, level: int) -> float:
@@ -286,7 +292,7 @@ class Work(commands.Cog, name="work"):
                 msg += ".)"
             msg += f" Saldo: {new_balance} \U0001fa99."
             if leveled_up:
-                msg += f"\n🎉 **Nousit tasolle {new_level}!** Töiden nopeus: {_multiplier(new_level)}×"
+                msg += f"\n🎉 **Nousit tasolle {new_level}!** Töiden nopeus: {_fmt_multiplier(new_level)}×"
             await channel.send(msg)
 
     @_job_notifier.before_loop
@@ -324,27 +330,24 @@ class Work(commands.Cog, name="work"):
     @commands.command(name="level", aliases=["rank"])
     async def level(self, ctx):
         xp, level = await self._run(_db_get_xp, ctx.author.id, ctx.guild.id)
-        mult = _multiplier(level)
         if level < _MAX_LEVEL:
             xp_needed = _XP_THRESHOLDS[level - 1] - xp
             next_info = f"Seuraavaan tasoon: **{xp_needed:.1f} XP**"
         else:
             next_info = "**Maksimitaso saavutettu.**"
         await ctx.send(
-            f"**{ctx.author.display_name}** — Taso **{level}** ({mult}×)\n{next_info}"
+            f"**{ctx.author.display_name}** — Taso **{level}** ({_fmt_multiplier(level)}×)\n{next_info}"
         )
 
     @commands.command(name="worklist")
     async def worklist(self, ctx):
         xp, level = await self._run(_db_get_xp, ctx.author.id, ctx.guild.id)
-        mult = _multiplier(level)
         if level < _MAX_LEVEL:
-            threshold_idx = level - 1
-            xp_needed = _XP_THRESHOLDS[threshold_idx] - xp
+            xp_needed = _XP_THRESHOLDS[level - 1] - xp
             next_info = f" · {xp_needed:.1f} XP seuraavaan tasoon"
         else:
             next_info = " · MAX"
-        header = f"**Taso {level} ({mult}×)**{next_info}\n"
+        header = f"**Taso {level} ({_fmt_multiplier(level)}×)**{next_info}\n"
         await ctx.send(header + self._build_job_list(level))
 
     @commands.command(name="work")
@@ -377,7 +380,7 @@ class Work(commands.Cog, name="work"):
                 _, level = await self._run(_db_get_xp, ctx.author.id, ctx.guild.id)
                 await ctx.send(
                     f"Olet liian kokematon. **{job}** kestäisi sinulta {_fmt_duration(value)} "
-                    f"(taso {level}, {_multiplier(level)}×)."
+                    f"(taso {level}, {_fmt_multiplier(level)}×)."
                 )
             elif status == "already_working":
                 await ctx.send(
@@ -399,13 +402,12 @@ class Work(commands.Cog, name="work"):
             await ctx.send(f"Työ (**{job_name}**) on valmis — palkka maksetaan hetken kuluttua.")
         else:
             xp, level = await self._run(_db_get_xp, ctx.author.id, ctx.guild.id)
-            mult = _multiplier(level)
             if level < _MAX_LEVEL:
                 xp_needed = _XP_THRESHOLDS[level - 1] - xp
                 next_info = f" · {xp_needed:.1f} XP seuraavaan tasoon"
             else:
                 next_info = " · MAX"
-            header = f"**Taso {level} ({mult}×)**{next_info}\n"
+            header = f"**Taso {level} ({_fmt_multiplier(level)}×)**{next_info}\n"
             await ctx.send(header + self._build_job_list(level))
 
 
