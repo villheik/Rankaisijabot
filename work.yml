@@ -1,0 +1,77 @@
+work:
+  min_hours: 0.0833         # 5 minuuttia
+  speed_multiplier: 1.4     # nopeuskerroin per taso (actual = base / speed^(level-1))
+  xp_level_multiplier: 1.24 # XP kerroin per taso (xp = base_hours * multiplier^(level-1))
+
+levels:
+  - xp_required: 2          # taso 1 → 2   (~2h)
+  - xp_required: 4          # taso 2 → 3   (~2.1h)
+  - xp_required: 7          # taso 3 → 4   (~2.3h)
+  - xp_required: 12         # taso 4 → 5   (~2.4h)
+  - xp_required: 23         # taso 5 → 6   (~2.6h)
+  - xp_required: 42         # taso 6 → 7   (~2.7h)
+  - xp_required: 78         # taso 7 → 8   (~2.9h)
+  - xp_required: 143        # taso 8 → 9   (~3.1h)
+  - xp_required: 263        # taso 9 → 10  (~3.3h)
+  - xp_required: 483        # taso 10 → 11 (~3.5h)
+  - xp_required: 890        # taso 11 → 12 (~3.7h)
+  - xp_required: 1637       # taso 12 → 13 (~3.9h)
+  - xp_required: 3012       # taso 13 → 14 (~4.1h)
+  - xp_required: 5541       # taso 14 → 15 (~4.4h)
+  - xp_required: 10196      # taso 15 → 16 (~4.7h)
+  - xp_required: 18761      # taso 16 → 17 (~5h)
+  - xp_required: 34520      # taso 17 → 18 (~5.3h)
+  - xp_required: 63517      # taso 18 → 19 (~5.6h)
+  - xp_required: 116872     # taso 19 → 20 (~5.9h)
+  - xp_required: 215044     # taso 20 → 21 (~6.3h)
+  - xp_required: 395681     # taso 21 → 22 (~6.7h)
+  - xp_required: 728053     # taso 22 → 23 (~7.1h)
+  - xp_required: 1339617    # taso 23 → 24 (~7.5h)
+  - xp_required: 2464896    # taso 24 → 25 (~8h)
+  - xp_required: 4535409    # taso 25 → 26 (~8.4h)
+  - xp_required: 8345153    # taso 26 → 27 (~8.9h)
+  - xp_required: 15355081   # taso 27 → 28 (~9.5h)
+  - xp_required: 28253548   # taso 28 → 29 (~10h)
+  - xp_required: 51986529   # taso 29 → 30 (~10.6h)
+
+jobs:
+  - name: pullot
+    payout: 50
+    base_hours: 0.5
+    flavor: "Kiertelit kaupungin roskiksia. Löysit 50 pulloa."
+  - name: pizza
+    payout: 150
+    base_hours: 2
+    flavor: "Ajoit pizzaa sateessa koko illan. Tippi oli kehno."
+  - name: raksa
+    payout: 350
+    base_hours: 6
+    flavor: "Olit rakennustyömaalla aamusta iltaan. Selkä hajoaa."
+  - name: konsultti
+    payout: 800
+    base_hours: 12
+    flavor: "Teit 47-sivuisen PowerPoint-esityksen. Laskutit reilusti."
+  - name: manageri
+    payout: 2000
+    base_hours: 24
+    flavor: "Johdit tiimiä kovalla kädellä. Tulokset puhuvat puolestaan."
+  - name: yrittäjä
+    payout: 5000
+    base_hours: 48
+    flavor: "Myit startup-ideasi sijoittajille. He uskoivat sinuun."
+  - name: CEO
+    payout: 20000
+    base_hours: 192
+    flavor: "Johdit pörssiyritystä neljännesvuoden ajan. Osinko oli muhkea."
+  - name: oligarkki
+    payout: 100000
+    base_hours: 768
+    flavor: "Hallitsit markkinoita kolme kuukautta. Konkurssit ovat muiden ongelma."
+  - name: superrikis
+    payout: 250000
+    base_hours: 1536
+    flavor: "Hallitsit kokonaista toimialaa. Valtio soitti ja pyysi neuvoja."
+  - name: megamogul
+    payout: 1000000
+    base_hours: 12288
+    flavor: "Valtion BKT alkaa näyttää pieneltä numerolta tilillesi."
