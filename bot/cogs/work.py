@@ -18,6 +18,11 @@ for _lvl in _LEVELS:
     _cumulative += _lvl["xp_required"]
     _XP_THRESHOLDS.append(_cumulative)
 
+_JOB_XP_MULTIPLIER = {
+    job["name"]: 1.2 ** i
+    for i, job in enumerate(_CONFIG["jobs"])
+}
+
 
 def _level_from_xp(xp: float) -> int:
     level = 1
@@ -265,7 +270,7 @@ class Work(commands.Cog, name="work"):
         channel_cache = {}
         for user_id, guild_id, job_name, payout, debt_paid, new_debt, new_balance in finished:
             job = _JOBS.get(job_name, {})
-            xp_gain = job.get("base_hours", 0)
+            xp_gain = job.get("base_hours", 0) * _JOB_XP_MULTIPLIER.get(job_name, 1.0)
             new_xp, new_level, leveled_up = await self._run(_db_add_xp, user_id, guild_id, xp_gain)
 
             if guild_id not in channel_cache:
