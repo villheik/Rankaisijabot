@@ -41,7 +41,7 @@ def _fmt_duration(hours: float) -> str:
     if hours < 1 / 60:
         return f"{int(hours * 3600)}s"
     if hours < 1:
-        return f"{int(hours * 60)}min"
+        return f"{round(hours * 60)}min"
     h = int(hours)
     m = int((hours - h) * 60)
     if m == 0:
@@ -291,9 +291,15 @@ class Work(commands.Cog, name="work"):
         await self.bot.wait_until_ready()
 
     def _build_job_list(self, level: int) -> str:
+        at_min = [j for j in _CONFIG["jobs"] if _actual_hours(j["base_hours"], level) <= _MIN_HOURS]
+        best_min = max(at_min, key=lambda j: j["payout"]) if at_min else None
+
         lines = []
         for job in _CONFIG["jobs"]:
             actual = _actual_hours(job["base_hours"], level)
+            if actual <= _MIN_HOURS:
+                if job is not best_min:
+                    continue
             available = actual <= 24.0
             icon = "✅" if available else "🔒"
             lines.append(
@@ -387,15 +393,14 @@ class Work(commands.Cog, name="work"):
             await ctx.send(f"Työ (**{job_name}**) on valmis — palkka maksetaan hetken kuluttua.")
         else:
             xp, level = await self._run(_db_get_xp, ctx.author.id, ctx.guild.id)
-            available = [
-                j for j in _CONFIG["jobs"]
-                if _actual_hours(j["base_hours"], level) <= 24.0
-            ]
-            lines = [
-                f"  `!work {j['name']:<12}` {_fmt_duration(_actual_hours(j['base_hours'], level)):<10} {j['payout']} \U0001fa99"
-                for j in available
-            ]
-            await ctx.send("Et ole töissä. Valitse:\n" + "\n".join(lines))
+            mult = _multiplier(level)
+            if level < _MAX_LEVEL:
+                xp_needed = _XP_THRESHOLDS[level - 1] - xp
+                next_info = f" · {xp_needed:.1f} XP seuraavaan tasoon"
+            else:
+                next_info = " · MAX"
+            header = f"**Taso {level} ({mult}×)**{next_info}\n"
+            await ctx.send(header + self._build_job_list(level))
 
 
 async def setup(bot):
