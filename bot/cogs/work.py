@@ -346,6 +346,9 @@ class Work(commands.Cog, name="work"):
 
     @commands.command(name="work")
     async def work(self, ctx, job: str = None):
+        if job is not None:
+            job = next((k for k in _JOBS if k.lower() == job.lower()), job)
+
         if job == "quit":
             quit_job = await self._run(_db_work_quit, ctx.author.id, ctx.guild.id)
             if quit_job is None:
