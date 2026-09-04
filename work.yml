@@ -1,0 +1,55 @@
+work:
+  min_hours: 0.0833   # 5 minuuttia
+
+levels:
+  - xp_required: 2        # taso 1 → 2
+  - xp_required: 8        # taso 2 → 3
+  - xp_required: 32       # taso 3 → 4
+  - xp_required: 128      # taso 4 → 5
+  - xp_required: 512      # taso 5 → 6
+  - xp_required: 2048     # taso 6 → 7
+  - xp_required: 8192     # taso 7 → 8
+  - xp_required: 32768    # taso 8 → 9
+  - xp_required: 131072   # taso 9 → 10
+
+jobs:
+  - name: pullot
+    payout: 50
+    base_hours: 0.5
+    flavor: "Kiertelit kaupungin roskiksia. Löysit 50 pulloa."
+  - name: pizza
+    payout: 150
+    base_hours: 2
+    flavor: "Ajoit pizzaa sateessa koko illan. Tippi oli kehno."
+  - name: raksa
+    payout: 350
+    base_hours: 6
+    flavor: "Olit rakennustyömaalla aamusta iltaan. Selkä hajoaa."
+  - name: konsultti
+    payout: 800
+    base_hours: 12
+    flavor: "Teit 47-sivuisen PowerPoint-esityksen. Laskutit reilusti."
+  - name: manageri
+    payout: 2000
+    base_hours: 24
+    flavor: "Johdit tiimiä kovalla kädellä. Tulokset puhuvat puolestaan."
+  - name: yrittäjä
+    payout: 5000
+    base_hours: 48
+    flavor: "Myit startup-ideasi sijoittajille. He uskoivat sinuun."
+  - name: CEO
+    payout: 20000
+    base_hours: 192
+    flavor: "Johdit pörssiyritystä neljännesvuoden ajan. Osinko oli muhkea."
+  - name: oligarkki
+    payout: 100000
+    base_hours: 768
+    flavor: "Hallitsit markkinoita kolme kuukautta. Konkurssit ovat muiden ongelma."
+  - name: superrikis
+    payout: 250000
+    base_hours: 1536
+    flavor: "Hallitsit kokonaista toimialaa. Valtio soitti ja pyysi neuvoja."
+  - name: megamogul
+    payout: 1000000
+    base_hours: 12288
+    flavor: "Valtion BKT alkaa näyttää pieneltä numerolta tilillesi."
