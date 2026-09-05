@@ -158,15 +158,6 @@ def _db_slot(user_id, guild_id, per_line_bet):
 
     winnings, winning_lines = _calculate_winnings(grid, per_line_bet)
 
-    if winnings > 0 and winnings <= total_bet * _AUTO_COLLECT_THRESHOLD:
-        conn.execute(
-            "UPDATE casino_balance SET balance = ? WHERE user_id = ? AND guild_id = ?",
-            (balance - total_bet + winnings, user_id, guild_id),
-        )
-        conn.commit()
-        conn.close()
-        return "auto_win", balance - total_bet + winnings, 0, winnings, winning_lines, grid
-
     if winnings > 0:
         conn.execute(
             "UPDATE casino_balance SET balance = ?, pending_winnings = ? WHERE user_id = ? AND guild_id = ?",
@@ -454,12 +445,6 @@ class Casino(commands.Cog, name="casino"):
 
         if status == "bomb":
             await ctx.send(f"💣 Pommi! Ei voittoa. Saldo: {balance} \U0001fa99.")
-        elif status == "auto_win":
-            lines_str = ", ".join(f"linja {l} {_LINE_DESC[l]}" for l in winning_lines)
-            await ctx.send(
-                f"Voitit {winnings} \U0001fa99! ({lines_str}) "
-                f"Tilitetty automaattisesti. Saldo: {balance} \U0001fa99."
-            )
         elif status == "win":
             lines_str = ", ".join(f"linja {l} {_LINE_DESC[l]}" for l in winning_lines)
             await ctx.send(
