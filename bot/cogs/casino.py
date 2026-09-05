@@ -13,9 +13,14 @@ _LOAN_INTEREST = _CONFIG["loan"]["interest_rate"]
 _LUCK_MAX = _CONFIG["luck"]["max_level"]
 _LUCK_COST_BASE = _CONFIG["luck"]["cost_base"]
 _AUTO_COLLECT_THRESHOLD = _CONFIG["auto_collect_threshold"]
+_JACKPOT_BASE = _CONFIG["jackpot"]["base_chance"]
+_JACKPOT_SPP = _CONFIG["jackpot"]["spins_per_percent"]
+_JACKPOT_MAX = _CONFIG["jackpot"]["max_chance"]
+_JACKPOT_MULT = _CONFIG["jackpot"]["payout_multiplier"]
 _SYMBOLS = _CONFIG["symbols"]
 
 _NORMAL_SYMBOLS = [s for s in _SYMBOLS if not s.get("last_reel_only")]
+_JACKPOT_SYMBOLS = [s for s in _SYMBOLS if not s.get("last_reel_only") and not s.get("bomb") and not s.get("wild")]
 
 
 # grid[reel][row], reel=0..2 (vasen→oikea), row=0..2 (ylä→ala)
@@ -48,6 +53,17 @@ def _has_bomb(grid):
         all(grid[pos[0]][pos[1]].get("bomb") for pos in payline)
         for payline in _PAYLINES
     )
+
+
+def _jackpot_chance(jackpot_spins):
+    return min(_JACKPOT_MAX, _JACKPOT_BASE + jackpot_spins / _JACKPOT_SPP)
+
+
+def _jackpot_spin(luck):
+    def ew(s):
+        return max(0.0, s["weight"] + luck * s.get("luck_weight_scale", 0))
+    weights = [ew(s) for s in _JACKPOT_SYMBOLS]
+    return random.choices(_JACKPOT_SYMBOLS, weights=weights, k=1)[0]
 
 
 def _check_line(grid, payline):
@@ -103,7 +119,7 @@ def _ensure_balance(conn, user_id, guild_id):
     ).fetchone()
     if exists is None:
         conn.execute(
-            "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings, luck) VALUES (?, ?, ?, 0, 0, 0)",
+            "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings, luck, jackpot_spins) VALUES (?, ?, ?, 0, 0, 0, 0)",
             (user_id, guild_id, _STARTING_BALANCE),
         )
         conn.commit()
@@ -113,7 +129,7 @@ def _db_get_or_create(user_id, guild_id):
     conn = sqlite3.connect(DB_PATH)
     _ensure_balance(conn, user_id, guild_id)
     row = conn.execute(
-        "SELECT balance, debt, pending_winnings, luck FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+        "SELECT balance, debt, pending_winnings, luck, jackpot_spins FROM casino_balance WHERE user_id = ? AND guild_id = ?",
         (user_id, guild_id),
     ).fetchone()
     conn.close()
@@ -124,18 +140,18 @@ def _db_slot(user_id, guild_id, per_line_bet):
     total_bet = per_line_bet * 5
     conn = sqlite3.connect(DB_PATH)
     row = conn.execute(
-        "SELECT balance, debt, pending_winnings, luck FROM casino_balance WHERE user_id = ? AND guild_id = ?",
+        "SELECT balance, debt, pending_winnings, luck, jackpot_spins FROM casino_balance WHERE user_id = ? AND guild_id = ?",
         (user_id, guild_id),
     ).fetchone()
     if row is None:
         conn.execute(
-            "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings, luck) VALUES (?, ?, ?, 0, 0, 0)",
+            "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings, luck, jackpot_spins) VALUES (?, ?, ?, 0, 0, 0, 0)",
             (user_id, guild_id, _STARTING_BALANCE),
         )
         conn.commit()
-        balance, debt, pending, luck = _STARTING_BALANCE, 0, 0, 0
+        balance, debt, pending, luck, jackpot_spins = _STARTING_BALANCE, 0, 0, 0, 0
     else:
-        balance, debt, pending, luck = row
+        balance, debt, pending, luck, jackpot_spins = row
 
     if pending > 0:
         conn.close()
@@ -145,12 +161,26 @@ def _db_slot(user_id, guild_id, per_line_bet):
         conn.close()
         return "broke", balance, 0, 0, [], None
 
+    if random.random() * 100 < _jackpot_chance(jackpot_spins):
+        symbol = _jackpot_spin(luck)
+        grid = [[symbol] * 3 for _ in range(3)]
+        winnings = symbol["payout"] * per_line_bet * _JACKPOT_MULT
+        new_balance = balance - total_bet + winnings
+        conn.execute(
+            "UPDATE casino_balance SET balance = ?, jackpot_spins = 0 WHERE user_id = ? AND guild_id = ?",
+            (new_balance, user_id, guild_id),
+        )
+        conn.commit()
+        conn.close()
+        return "jackpot", new_balance, 0, winnings, [1, 2, 3, 4, 5], grid
+
+    new_spins = jackpot_spins + 1
     grid = _spin(luck)
 
     if _has_bomb(grid):
         conn.execute(
-            "UPDATE casino_balance SET balance = ? WHERE user_id = ? AND guild_id = ?",
-            (balance - total_bet, user_id, guild_id),
+            "UPDATE casino_balance SET balance = ?, jackpot_spins = ? WHERE user_id = ? AND guild_id = ?",
+            (balance - total_bet, new_spins, user_id, guild_id),
         )
         conn.commit()
         conn.close()
@@ -160,16 +190,16 @@ def _db_slot(user_id, guild_id, per_line_bet):
 
     if winnings > 0:
         conn.execute(
-            "UPDATE casino_balance SET balance = ?, pending_winnings = ? WHERE user_id = ? AND guild_id = ?",
-            (balance - total_bet, winnings, user_id, guild_id),
+            "UPDATE casino_balance SET balance = ?, pending_winnings = ?, jackpot_spins = ? WHERE user_id = ? AND guild_id = ?",
+            (balance - total_bet, winnings, new_spins, user_id, guild_id),
         )
         conn.commit()
         conn.close()
         return "win", balance - total_bet, 0, winnings, winning_lines, grid
 
     conn.execute(
-        "UPDATE casino_balance SET balance = ? WHERE user_id = ? AND guild_id = ?",
-        (balance - total_bet, user_id, guild_id),
+        "UPDATE casino_balance SET balance = ?, jackpot_spins = ? WHERE user_id = ? AND guild_id = ?",
+        (balance - total_bet, new_spins, user_id, guild_id),
     )
     conn.commit()
     conn.close()
@@ -235,7 +265,7 @@ def _db_loan(user_id, guild_id, amount):
     ).fetchone()
     if row is None:
         conn.execute(
-            "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings, luck) VALUES (?, ?, ?, 0, 0, 0)",
+            "INSERT INTO casino_balance (user_id, guild_id, balance, debt, pending_winnings, luck, jackpot_spins) VALUES (?, ?, ?, 0, 0, 0, 0)",
             (user_id, guild_id, _STARTING_BALANCE),
         )
         conn.commit()
@@ -380,7 +410,7 @@ class Casino(commands.Cog, name="casino"):
 
     @commands.command(name="balance", aliases=["bal"], help="Näytä oma saldo ja velkatilanne.")
     async def balance(self, ctx):
-        balance, debt, pending, luck = await self._run(_db_get_or_create, ctx.author.id, ctx.guild.id)
+        balance, debt, pending, luck, _jackpot_spins = await self._run(_db_get_or_create, ctx.author.id, ctx.guild.id)
         msg = f"**{ctx.author.display_name}** — {balance} \U0001fa99"
         if luck > 0:
             msg += f" | Luck: {luck}"
@@ -434,7 +464,13 @@ class Casino(commands.Cog, name="casino"):
         ]
         await ctx.send("\n".join(grid_rows))
 
-        if status == "bomb":
+        if status == "jackpot":
+            jackpot_symbol = grid[0][0]
+            await ctx.send(
+                f"🎉 **MEGA JACKPOT!** Kaikki {jackpot_symbol['emoji']} ({jackpot_symbol['name']})! "
+                f"Voitit **{winnings} \U0001fa99**! Saldo: {balance} \U0001fa99."
+            )
+        elif status == "bomb":
             await ctx.send(f"💣 Pommi! Ei voittoa. Saldo: {balance} \U0001fa99.")
         elif status == "win":
             lines_str = ", ".join(f"linja {l} {_LINE_DESC[l]}" for l in winning_lines)
@@ -525,7 +561,7 @@ class Casino(commands.Cog, name="casino"):
 
     @commands.command(name="luck", help="Näytä luck-tasosi ja sen vaikutus.")
     async def luck_cmd(self, ctx):
-        balance, debt, pending, luck = await self._run(_db_get_or_create, ctx.author.id, ctx.guild.id)
+        balance, debt, pending, luck, _jackpot_spins = await self._run(_db_get_or_create, ctx.author.id, ctx.guild.id)
         next_cost = _LUCK_COST_BASE * (luck + 1) ** 2 if luck < _LUCK_MAX else None
 
         lines = [f"**Luck-taso: {luck}/{_LUCK_MAX}**"]

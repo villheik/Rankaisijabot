@@ -8,6 +8,12 @@ luck:
   max_level: 20
   cost_base: 100
 
+jackpot:
+  base_chance: 1.0        # % mahdollisuus 0 spinillä
+  spins_per_percent: 50   # montako slottispiniä lisää 1 %:n
+  max_chance: 75.0        # katto
+  payout_multiplier: 10   # jackpot = symbol.payout × per_line_bet × kerroin
+
 auto_collect_threshold: 3
 
 symbols:
