@@ -76,7 +76,7 @@ def _check_line(grid, payline):
         return s1.get("payout", 0)
 
     # 2+wild: tähti viimeisenä (reel 2), kaksi samaa edessä, ei cherry-symboli
-    if s3.get("wild") and s1["name"] == s2["name"] and not s1.get("cherry"):
+    if s3.get("wild") and s1["name"] == s2["name"] and not s1.get("cherry") and not s1.get("bomb"):
         return s1.get("two_plus_wild_payout", 0)
 
     # Kirsikka/mansikka — luetaan vasemmalta oikealle
@@ -95,6 +95,12 @@ def _check_line(grid, payline):
     # Lucky symbol partial — 2 samaa linjalla (3oaK jo käsitelty yllä)
     if s1.get("lucky") and s2.get("name") == s1["name"]:
         return s1.get("partial_payouts", {}).get(2, 0)
+
+    # Pommi partial — 1 tai 2 linjalla (3oaK = räjähdys, käsitelty _has_bomb:ssa)
+    if s1.get("bomb"):
+        if s2.get("bomb"):
+            return s1.get("partial_payouts", {}).get(2, 0)
+        return s1.get("partial_payouts", {}).get(1, 0)
 
     return 0
 

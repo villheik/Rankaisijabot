@@ -10,7 +10,7 @@ luck:
 
 jackpot:
   base_chance: 1.0        # % mahdollisuus 0 spinillä
-  spins_per_percent: 50   # montako slottispiniä lisää 1 %:n
+  spins_per_percent: 2    # montako slottispiniä lisää 1 %:n (0.5% per spini)
   max_chance: 75.0        # katto
   payout_multiplier: 10   # jackpot = symbol.payout × per_line_bet × kerroin
 
@@ -103,3 +103,6 @@ symbols:
     luck_weight_scale: 0.17
     bomb: true
     payout: 0
+    partial_payouts:
+      1: 5
+      2: 25
