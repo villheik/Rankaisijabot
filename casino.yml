@@ -67,30 +67,27 @@ symbols:
   - emoji: "🌈"
     name: "Sateenkaari"
     weight: 0
-    luck_weight_scale: 1.0
+    luck_weight_scale: 2.0
     lucky: true
     partial_payouts:
-      1: 4
       2: 20
     payout: 150
     two_plus_wild_payout: 80
   - emoji: "👑"
     name: "Kruunu"
     weight: 0
-    luck_weight_scale: 0.5
+    luck_weight_scale: 1.0
     lucky: true
     partial_payouts:
-      1: 6
       2: 35
     payout: 400
     two_plus_wild_payout: 200
   - emoji: "💎"
     name: "Timantti"
     weight: 0
-    luck_weight_scale: 0.25
+    luck_weight_scale: 0.5
     lucky: true
     partial_payouts:
-      1: 9
       2: 55
     payout: 1500
     two_plus_wild_payout: 600
