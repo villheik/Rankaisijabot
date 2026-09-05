@@ -188,7 +188,7 @@ class F1(commands.Cog, name="f1"):
             conn.close()
             mentions = " ".join(f"<@{uid[0]}>" for uid in subs)
             suffix = f"\n{mentions}" if mentions else ""
-            await channel.send(f"{message}{suffix}\n-# Kirjoita `!f1sub` saadaksesi henkilökohtaisen ilmoituksen")
+            await channel.send(f"{message}{suffix}\n-# Kirjoita `!f1sub` saadaksesi henkilökohtaisen ilmoituksen (tai poistuaksesi listalta)")
 
     @commands.command(name="f1debug")
     async def f1debug(self, context):
