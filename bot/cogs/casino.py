@@ -92,10 +92,6 @@ def _check_line(grid, payline):
     if s3.get("cherry_sub"):
         return s3["payout"]
 
-    # Lucky symbol partial — 2 samaa linjalla (3oaK jo käsitelty yllä)
-    if s1.get("lucky") and s2.get("name") == s1["name"]:
-        return s1.get("partial_payouts", {}).get(2, 0)
-
     # Pommi partial — 1 tai 2 linjalla (3oaK = räjähdys, käsitelty _has_bomb:ssa)
     if s1.get("bomb"):
         if s2.get("bomb"):

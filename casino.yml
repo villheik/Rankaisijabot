@@ -77,8 +77,6 @@ symbols:
     weight: 0
     luck_weight_scale: 2.0
     lucky: true
-    partial_payouts:
-      2: 20
     payout: 150
     two_plus_wild_payout: 80
   - emoji: "👑"
@@ -86,8 +84,6 @@ symbols:
     weight: 0
     luck_weight_scale: 1.0
     lucky: true
-    partial_payouts:
-      2: 35
     payout: 400
     two_plus_wild_payout: 200
   - emoji: "💎"
@@ -95,8 +91,6 @@ symbols:
     weight: 0
     luck_weight_scale: 0.5
     lucky: true
-    partial_payouts:
-      2: 55
     payout: 1500
     two_plus_wild_payout: 600
   - emoji: "💣"
