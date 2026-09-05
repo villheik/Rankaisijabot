@@ -17,25 +17,48 @@ jackpot:
 auto_collect_threshold: 3
 
 symbols:
-  - emoji: "🎰"
-    name: "RAY"
-    weight: 1
-    luck_weight_scale: 0.5
-    payout: 50
-  - emoji: "🍀"
-    name: "Apila"
-    weight: 2
-    luck_weight_scale: 2.0
-    payout: 20
-    two_plus_wild_payout: 15
-  - emoji: "⭐"
-    name: "Tähti"
-    weight: 6
-    wild: true
-    last_reel_only: true
+  # Yleiset hedelmät — korkea paino, matala payout, plateau luck ~7
+  - emoji: "🍉"
+    name: "Vesimeloni"
+    weight: 24
+    luck_weight_scale: 0.3
+    max_weight: 26
+    payout: 14
+    two_plus_wild_payout: 9
+  - emoji: "🍐"
+    name: "Päärynä"
+    weight: 20
+    luck_weight_scale: 0.3
+    max_weight: 22
+    payout: 14
+    two_plus_wild_payout: 9
+  - emoji: "🍇"
+    name: "Viinirypäleet"
+    weight: 18
+    luck_weight_scale: 0.3
+    max_weight: 20
+    payout: 15
+    two_plus_wild_payout: 10
+  - emoji: "🍆"
+    name: "Luumu"
+    weight: 15
+    luck_weight_scale: 0.3
+    max_weight: 17
+    payout: 10
+    two_plus_wild_payout: 10
+  - emoji: "🍊"
+    name: "Appelsiini"
+    weight: 12
+    luck_weight_scale: 0.3
+    max_weight: 14
+    payout: 8
+    two_plus_wild_payout: 8
+  # Cherry-mekaaniikka — plateau luck ~10
   - emoji: "🍒"
     name: "Kirsikka"
     weight: 8
+    luck_weight_scale: 0.3
+    max_weight: 11
     payout: 8
     cherry: true
     partial_payouts:
@@ -44,34 +67,33 @@ symbols:
   - emoji: "🍓"
     name: "Mansikka"
     weight: 10
+    luck_weight_scale: 0.2
+    max_weight: 12
     last_reel_only: true
     cherry_sub: true
     payout: 4
-  - emoji: "🍊"
-    name: "Appelsiini"
-    weight: 12
-    payout: 8
-    two_plus_wild_payout: 8
-  - emoji: "🍆"
-    name: "Luumu"
-    weight: 15
-    payout: 10
-    two_plus_wild_payout: 10
-  - emoji: "🍇"
-    name: "Viinirypäleet"
-    weight: 18
-    payout: 15
-    two_plus_wild_payout: 10
-  - emoji: "🍐"
-    name: "Päärynä"
-    weight: 20
-    payout: 14
-    two_plus_wild_payout: 9
-  - emoji: "🍉"
-    name: "Vesimeloni"
-    weight: 24
-    payout: 14
-    two_plus_wild_payout: 9
+  # Wild — plateau luck ~10, vain kolmas reeli
+  - emoji: "⭐"
+    name: "Tähti"
+    weight: 6
+    luck_weight_scale: 0.2
+    max_weight: 8
+    wild: true
+    last_reel_only: true
+  # Mid-tier — kasvaa luckin myötä
+  - emoji: "🍀"
+    name: "Apila"
+    weight: 2
+    luck_weight_scale: 2.0
+    max_weight: 25
+    payout: 20
+    two_plus_wild_payout: 15
+  - emoji: "🎰"
+    name: "RAY"
+    weight: 1
+    luck_weight_scale: 0.5
+    payout: 50
+  # Lucky-symbolit — ei kattoa, hallitsevat korkealla luckilla
   - emoji: "🌈"
     name: "Sateenkaari"
     weight: 0
@@ -93,6 +115,7 @@ symbols:
     lucky: true
     payout: 1500
     two_plus_wild_payout: 600
+  # Pommi — ei kattoa, räjähdyksiä korkealla luckilla
   - emoji: "💣"
     name: "Pommi"
     weight: 0

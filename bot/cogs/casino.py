@@ -37,12 +37,15 @@ _PAYLINES = [
 ]
 
 
-def _spin(luck=0):
-    def ew(s):
-        return max(0.0, s["weight"] + luck * s.get("luck_weight_scale", 0))
+def _ew(s, luck):
+    effective = max(0.0, s["weight"] + luck * s.get("luck_weight_scale", 0))
+    max_w = s.get("max_weight")
+    return min(effective, max_w) if max_w is not None else effective
 
-    normal_weights = [ew(s) for s in _NORMAL_SYMBOLS]
-    all_weights = [ew(s) for s in _SYMBOLS]
+
+def _spin(luck=0):
+    normal_weights = [_ew(s, luck) for s in _NORMAL_SYMBOLS]
+    all_weights = [_ew(s, luck) for s in _SYMBOLS]
     reels = [random.choices(_NORMAL_SYMBOLS, weights=normal_weights, k=3) for _ in range(2)]
     reels.append(random.choices(_SYMBOLS, weights=all_weights, k=3))
     return reels
@@ -60,9 +63,7 @@ def _jackpot_chance(jackpot_spins):
 
 
 def _jackpot_spin(luck):
-    def ew(s):
-        return max(0.0, s["weight"] + luck * s.get("luck_weight_scale", 0))
-    weights = [ew(s) for s in _JACKPOT_SYMBOLS]
+    weights = [_ew(s, luck) for s in _JACKPOT_SYMBOLS]
     return random.choices(_JACKPOT_SYMBOLS, weights=weights, k=1)[0]
 
 
