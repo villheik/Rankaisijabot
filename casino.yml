@@ -20,10 +20,12 @@ symbols:
   - emoji: "🎰"
     name: "RAY"
     weight: 1
+    luck_weight_scale: 0.5
     payout: 50
   - emoji: "🍀"
     name: "Apila"
     weight: 2
+    luck_weight_scale: 2.0
     payout: 20
     two_plus_wild_payout: 15
   - emoji: "⭐"
