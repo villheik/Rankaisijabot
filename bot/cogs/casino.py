@@ -16,7 +16,6 @@ _AUTO_COLLECT_THRESHOLD = _CONFIG["auto_collect_threshold"]
 _SYMBOLS = _CONFIG["symbols"]
 
 _NORMAL_SYMBOLS = [s for s in _SYMBOLS if not s.get("last_reel_only")]
-_LUCK_SYMBOLS = [s for s in _SYMBOLS if s.get("lucky") or s.get("bomb")]
 
 
 # grid[reel][row], reel=0..2 (vasen→oikea), row=0..2 (ylä→ala)
@@ -334,15 +333,6 @@ def _db_work_channel_get(guild_id):
     return row[0] if row else None
 
 
-def _luck_symbol_desc(weight):
-    if weight < 0.5:
-        return "ei vielä näy"
-    if weight < 3:
-        return "erittäin harvinainen"
-    if weight < 8:
-        return "harvinainen"
-    return "näkyy silloin tällöin"
-
 
 class Casino(commands.Cog, name="casino"):
     def __init__(self, bot):
@@ -537,11 +527,7 @@ class Casino(commands.Cog, name="casino"):
         balance, debt, pending, luck = await self._run(_db_get_or_create, ctx.author.id, ctx.guild.id)
         next_cost = _LUCK_COST_BASE * (luck + 1) ** 2 if luck < _LUCK_MAX else None
 
-        lines = [f"**Luck-taso: {luck}/{_LUCK_MAX}**\n"]
-        for s in _LUCK_SYMBOLS:
-            weight = luck * s.get("luck_weight_scale", 0)
-            desc = _luck_symbol_desc(weight)
-            lines.append(f"{s['emoji']} {s['name']} — paino {weight:.1f} ({desc})")
+        lines = [f"**Luck-taso: {luck}/{_LUCK_MAX}**"]
 
         if next_cost is not None:
             lines.append(f"\nSeuraava taso ({luck + 1}): {next_cost} \U0001fa99 | `!buyluck`")
