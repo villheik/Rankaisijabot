@@ -44,7 +44,10 @@ def _spin(luck=0):
 
 
 def _has_bomb(grid):
-    return any(grid[reel][row].get("bomb") for reel in range(3) for row in range(3))
+    return any(
+        all(grid[pos[0]][pos[1]].get("bomb") for pos in payline)
+        for payline in _PAYLINES
+    )
 
 
 def _check_line(grid, payline):
