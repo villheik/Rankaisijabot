@@ -48,9 +48,8 @@ def _render_grid(grid: list, stopped_reels: int, winning_lines: list = None) -> 
 
     def diag_row(label_line, win_line, arrow):
         label = _LINE_LABEL[label_line]
-        if win_line in wins:
-            return f"{label}  {_DIAG_FILLER} {arrow}"
-        return label
+        indicator = arrow if win_line in wins else "▪️"
+        return f"{label}  {_DIAG_FILLER} {indicator}"
 
     rows = [diag_row(5, 4, "↙️")]
     for row in range(3):
@@ -59,7 +58,7 @@ def _render_grid(grid: list, stopped_reels: int, winning_lines: list = None) -> 
             for reel in range(3)
         )
         line_num = _ROW_TO_LINE[row]
-        suffix = " ⬅️" if line_num in wins else ""
+        suffix = " ⬅️" if line_num in wins else " ▪️"
         rows.append(f"{_LINE_LABEL[line_num]}  {cells}{suffix}")
     rows.append(diag_row(4, 5, "↖️"))
     return "\n".join(rows)
