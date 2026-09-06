@@ -1,3 +1,4 @@
+import asyncio
 import random
 import sqlite3
 import yaml
@@ -35,6 +36,16 @@ _PAYLINES = [
     [(0, 2), (1, 1), (2, 0)],  # linja 4: diagonaali ↗
     [(0, 0), (1, 1), (2, 2)],  # linja 5: diagonaali ↘
 ]
+
+
+def _render_grid(grid: list, stopped_reels: int) -> str:
+    rows = []
+    for row in range(3):
+        cols = []
+        for reel in range(3):
+            cols.append(grid[reel][row]["emoji"] if reel < stopped_reels else "🎰")
+        rows.append(" ".join(cols))
+    return "\n".join(rows)
 
 
 def _ew(s, luck):
@@ -461,11 +472,10 @@ class Casino(commands.Cog, name="casino"):
             )
             return
 
-        grid_rows = [
-            " ".join(grid[reel][row]["emoji"] for reel in range(3))
-            for row in range(3)
-        ]
-        await ctx.send("\n".join(grid_rows))
+        msg = await ctx.send(_render_grid(grid, 0))
+        for stopped in range(1, 4):
+            await asyncio.sleep(0.6)
+            await msg.edit(content=_render_grid(grid, stopped))
 
         if status == "jackpot":
             jackpot_symbol = grid[0][0]
