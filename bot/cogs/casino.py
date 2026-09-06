@@ -38,13 +38,25 @@ _PAYLINES = [
 ]
 
 
-def _render_grid(grid: list, stopped_reels: int) -> str:
-    rows = []
+_LINE_LABEL = {1: "1️⃣", 2: "2️⃣", 3: "3️⃣", 4: "↗️", 5: "↘️"}
+_WIN_MARKER = "▶️"
+_ROW_TO_LINE = {0: 3, 1: 1, 2: 2}
+
+
+def _render_grid(grid: list, stopped_reels: int, winning_lines: list = None) -> str:
+    wins = set(winning_lines or [])
+
+    def label(line_num):
+        return _WIN_MARKER if line_num in wins else _LINE_LABEL[line_num]
+
+    rows = [label(5)]
     for row in range(3):
-        cols = []
-        for reel in range(3):
-            cols.append(grid[reel][row]["emoji"] if reel < stopped_reels else "🎰")
-        rows.append(" ".join(cols))
+        cells = " ".join(
+            grid[reel][row]["emoji"] if reel < stopped_reels else "🔄"
+            for reel in range(3)
+        )
+        rows.append(f"{label(_ROW_TO_LINE[row])}  {cells}")
+    rows.append(label(4))
     return "\n".join(rows)
 
 
@@ -473,9 +485,11 @@ class Casino(commands.Cog, name="casino"):
             return
 
         msg = await ctx.send(_render_grid(grid, 0))
-        for stopped in range(1, 4):
+        for stopped in range(1, 3):
             await asyncio.sleep(0.6)
             await msg.edit(content=_render_grid(grid, stopped))
+        await asyncio.sleep(0.6)
+        await msg.edit(content=_render_grid(grid, 3, winning_lines if status == "win" else None))
 
         if status == "jackpot":
             jackpot_symbol = grid[0][0]
