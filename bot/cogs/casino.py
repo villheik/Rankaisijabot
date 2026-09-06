@@ -1,3 +1,4 @@
+import asyncio
 import random
 import sqlite3
 import yaml
@@ -35,6 +36,32 @@ _PAYLINES = [
     [(0, 2), (1, 1), (2, 0)],  # linja 4: diagonaali ↗
     [(0, 0), (1, 1), (2, 2)],  # linja 5: diagonaali ↘
 ]
+
+
+_LINE_LABEL  = {1: "1️⃣", 2: "2️⃣", 3: "3️⃣", 4: "4️⃣", 5: "5️⃣"}
+_DIAG_FILLER = "▪️ ▪️ ▪️"
+_ROW_TO_LINE = {0: 3, 1: 1, 2: 2}
+
+
+def _render_grid(grid: list, stopped_reels: int, winning_lines: list = None) -> str:
+    wins = set(winning_lines or [])
+
+    def diag_row(label_line, win_line, arrow):
+        label = _LINE_LABEL[label_line]
+        indicator = arrow if win_line in wins else "▪️"
+        return f"{label}  {_DIAG_FILLER} {indicator}"
+
+    rows = [diag_row(5, 4, "↙️")]
+    for row in range(3):
+        cells = " ".join(
+            grid[reel][row]["emoji"] if reel < stopped_reels else "🔄"
+            for reel in range(3)
+        )
+        line_num = _ROW_TO_LINE[row]
+        suffix = " ⬅️" if line_num in wins else " ▪️"
+        rows.append(f"{_LINE_LABEL[line_num]}  {cells}{suffix}")
+    rows.append(diag_row(4, 5, "↖️"))
+    return "\n".join(rows)
 
 
 def _ew(s, luck):
@@ -461,11 +488,12 @@ class Casino(commands.Cog, name="casino"):
             )
             return
 
-        grid_rows = [
-            " ".join(grid[reel][row]["emoji"] for reel in range(3))
-            for row in range(3)
-        ]
-        await ctx.send("\n".join(grid_rows))
+        msg = await ctx.send(_render_grid(grid, 0))
+        for stopped in range(1, 3):
+            await asyncio.sleep(0.6)
+            await msg.edit(content=_render_grid(grid, stopped))
+        await asyncio.sleep(0.6)
+        await msg.edit(content=_render_grid(grid, 3, winning_lines if status == "win" else None))
 
         if status == "jackpot":
             jackpot_symbol = grid[0][0]
