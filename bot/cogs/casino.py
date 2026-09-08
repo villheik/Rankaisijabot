@@ -462,6 +462,9 @@ class Casino(commands.Cog, name="casino"):
         except ValueError:
             await ctx.send("Käyttö: `!slot <panos per linja>` (5 linjaa, yhteensä panos × 5)")
             return
+        except OverflowError:
+            await ctx.send(f"Panostit enemmän \U0001fa99 kuin atomeja universumissa. Yritä pienemmällä panoksella.")
+            return
 
         if bet_int is None or bet_int < 5:
             await ctx.send("Käyttö: `!slot <panos>` (jaetaan tasan 5 linjalle, minimi 5 \U0001fa99)")
