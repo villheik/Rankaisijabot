@@ -154,6 +154,25 @@ def db(tmp_path, monkeypatch):
     yield  # tmp_path cleans up automatically
 ```
 
+## Release Notes
+
+Release notes are always written in English — they are posted to Discord by the bot. Section headings always use `##` markdown. Follow this structure, omitting empty sections:
+
+```
+## New
+- **FeatureName** — description of new feature
+
+## Improvements
+- **Thing** — what was improved
+
+## Bug Fixes
+- What was fixed
+
+## Notes
+- Regular note
+- > ⚠️ Breaking changes require a warning
+```
+
 ## CI/CD Pipeline
 
 - Push to `dev` branch → runs tests → if passing, builds and pushes `:dev` image to ghcr.io

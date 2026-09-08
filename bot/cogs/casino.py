@@ -457,7 +457,7 @@ class Casino(commands.Cog, name="casino"):
     )
     async def slot(self, ctx, bet: str = None):
         try:
-            bet_int = int(bet) if bet is not None else None
+            bet_int = int(float(bet)) if bet is not None else None
         except ValueError:
             await ctx.send("Käyttö: `!slot <panos per linja>` (5 linjaa, yhteensä panos × 5)")
             return
@@ -502,7 +502,7 @@ class Casino(commands.Cog, name="casino"):
                 f"Voitit **{winnings} \U0001fa99**! Saldo: {balance} \U0001fa99."
             )
         elif status == "bomb":
-            await ctx.send(f"💣 Pommi! Ei voittoa. Saldo: {balance} \U0001fa99.")
+            await ctx.send(f"💣 **BOOM!** Kolme pommia räjäyttivät pelikoneesi — ei voittoa tältä kierrokselta. Saldo: {balance} \U0001fa99.")
         elif status == "win":
             lines_str = ", ".join(f"linja {l} {_LINE_DESC[l]}" for l in winning_lines)
             await ctx.send(
