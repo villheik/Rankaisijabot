@@ -4,6 +4,7 @@ import sqlite3
 import yaml
 from discord.ext import commands
 from bot.db import DB_PATH
+from bot.fmt import fmt_coins as _fmt
 
 with open("casino.yml", encoding="UTF-8") as f:
     _CONFIG = yaml.safe_load(f)
@@ -441,13 +442,13 @@ class Casino(commands.Cog, name="casino"):
     @commands.command(name="balance", aliases=["bal"], help="Näytä oma saldo ja velkatilanne.")
     async def balance(self, ctx):
         balance, debt, pending, luck, _jackpot_spins = await self._run(_db_get_or_create, ctx.author.id, ctx.guild.id)
-        msg = f"**{ctx.author.display_name}** — {balance} \U0001fa99"
+        msg = f"**{ctx.author.display_name}** — {_fmt(balance)} \U0001fa99"
         if luck > 0:
             msg += f" | Luck: {luck}"
         if pending > 0:
-            msg += f" | Odottaa: {pending} \U0001fa99"
+            msg += f" | Odottaa: {_fmt(pending)} \U0001fa99"
         if debt > 0:
-            msg += f" | Velka: {debt} \U0001fa99"
+            msg += f" | Velka: {_fmt(debt)} \U0001fa99"
         await ctx.send(msg)
 
     @commands.command(
@@ -457,7 +458,7 @@ class Casino(commands.Cog, name="casino"):
     )
     async def slot(self, ctx, bet: str = None):
         try:
-            bet_int = int(bet) if bet is not None else None
+            bet_int = int(float(bet)) if bet is not None else None
         except ValueError:
             await ctx.send("Käyttö: `!slot <panos per linja>` (5 linjaa, yhteensä panos × 5)")
             return
@@ -469,7 +470,7 @@ class Casino(commands.Cog, name="casino"):
         per_line_bet = bet_int // 5
         total_bet = per_line_bet * 5
         if total_bet != bet_int:
-            await ctx.send(f"Panos pyöristetty {total_bet} \U0001fa99:ään ({per_line_bet} per linja).")
+            await ctx.send(f"Panos pyöristetty {_fmt(total_bet)} \U0001fa99:ään ({_fmt(per_line_bet)} per linja).")
 
         status, balance, pending, winnings, winning_lines, grid = await self._run(
             _db_slot, ctx.author.id, ctx.guild.id, per_line_bet
@@ -477,14 +478,14 @@ class Casino(commands.Cog, name="casino"):
 
         if status == "pending":
             await ctx.send(
-                f"Sinulla on {pending} \U0001fa99 odottamassa. "
+                f"Sinulla on {_fmt(pending)} \U0001fa99 odottamassa. "
                 f"Ota ulos (`!collect`) tai tuplaa (`!double kruuna/klaava`)."
             )
             return
         if status == "broke":
             await ctx.send(
-                f"Ei riitä kolikoita. Saldosi on {balance} \U0001fa99 "
-                f"(tarvitaan {per_line_bet * 5} \U0001fa99)."
+                f"Ei riitä kolikoita. Saldosi on {_fmt(balance)} \U0001fa99 "
+                f"(tarvitaan {_fmt(per_line_bet * 5)} \U0001fa99)."
             )
             return
 
@@ -499,18 +500,18 @@ class Casino(commands.Cog, name="casino"):
             jackpot_symbol = grid[0][0]
             await ctx.send(
                 f"🎉 **MEGA JACKPOT!** Kaikki {jackpot_symbol['emoji']} ({jackpot_symbol['name']})! "
-                f"Voitit **{winnings} \U0001fa99**! Saldo: {balance} \U0001fa99."
+                f"Voitit **{_fmt(winnings)} \U0001fa99**! Saldo: {_fmt(balance)} \U0001fa99."
             )
         elif status == "bomb":
-            await ctx.send(f"💣 Pommi! Ei voittoa. Saldo: {balance} \U0001fa99.")
+            await ctx.send(f"💣 **BOOM!** Kolme pommia räjäyttivät pelikoneesi — ei voittoa tältä kierrokselta. Saldo: {_fmt(balance)} \U0001fa99.")
         elif status == "win":
             lines_str = ", ".join(f"linja {l} {_LINE_DESC[l]}" for l in winning_lines)
             await ctx.send(
-                f"**Voitit {winnings} \U0001fa99!** ({lines_str})\n"
+                f"**Voitit {_fmt(winnings)} \U0001fa99!** ({lines_str})\n"
                 f"Tuplaa (`!double kruuna/klaava`) tai ota ulos (`!collect`)."
             )
         else:
-            await ctx.send(f"Ei voittoa. Saldo: {balance} \U0001fa99.")
+            await ctx.send(f"Ei voittoa. Saldo: {_fmt(balance)} \U0001fa99.")
 
     @commands.command(
         name="double",
@@ -530,11 +531,11 @@ class Casino(commands.Cog, name="casino"):
             await ctx.send("Ei odottavia voittoja tuplattavaksi.")
         elif status == "win":
             await ctx.send(
-                f"**{tulos_kolikko.capitalize()}!** {pending} \U0001fa99 → **{doubled} \U0001fa99**. "
+                f"**{tulos_kolikko.capitalize()}!** {_fmt(pending)} \U0001fa99 → **{_fmt(doubled)} \U0001fa99**. "
                 f"Jatka (`!double kruuna/klaava`) tai ota ulos (`!collect`)."
             )
         else:
-            await ctx.send(f"**{tulos_kolikko.capitalize()}!** Hävisit {pending} \U0001fa99.")
+            await ctx.send(f"**{tulos_kolikko.capitalize()}!** Hävisit {_fmt(pending)} \U0001fa99.")
 
     @commands.command(name="collect", aliases=["take"], help="Siirrä odottavat voitot tilille.")
     async def collect(self, ctx):
@@ -546,36 +547,36 @@ class Casino(commands.Cog, name="casino"):
             await ctx.send("Ei odottavia voittoja.")
             return
 
-        msg = f"Tilitetty {pending} \U0001fa99."
+        msg = f"Tilitetty {_fmt(pending)} \U0001fa99."
         if debt_paid > 0:
-            msg += f" ({debt_paid} \U0001fa99 meni velan lyhennykseen"
+            msg += f" ({_fmt(debt_paid)} \U0001fa99 meni velan lyhennykseen"
             if new_debt > 0:
-                msg += f", velkaa jäljellä {new_debt} \U0001fa99"
+                msg += f", velkaa jäljellä {_fmt(new_debt)} \U0001fa99"
             msg += ".)"
-        msg += f" Saldo: {new_balance} \U0001fa99."
+        msg += f" Saldo: {_fmt(new_balance)} \U0001fa99."
         await ctx.send(msg)
 
     @commands.command(
         name="loan",
-        help=f"Ota pikavippi. {int(_LOAN_INTEREST * 100)}% korko, max {_LOAN_MAX} \U0001fa99.\n\nKäyttö: `!loan <summa>`",
+        help=f"Ota pikavippi. {int(_LOAN_INTEREST * 100)}% korko, max {_fmt(_LOAN_MAX)} \U0001fa99.\n\nKäyttö: `!loan <summa>`",
     )
     async def loan(self, ctx, amount: str = None):
         try:
             amount_int = int(amount) if amount is not None else None
         except ValueError:
             await ctx.send(
-                f"Käyttö: `!loan <summa>` (max {_LOAN_MAX} \U0001fa99, {int(_LOAN_INTEREST * 100)}% korko)"
+                f"Käyttö: `!loan <summa>` (max {_fmt(_LOAN_MAX)} \U0001fa99, {int(_LOAN_INTEREST * 100)}% korko)"
             )
             return
 
         if amount_int is None or amount_int <= 0:
             await ctx.send(
-                f"Käyttö: `!loan <summa>` (max {_LOAN_MAX} \U0001fa99, {int(_LOAN_INTEREST * 100)}% korko)"
+                f"Käyttö: `!loan <summa>` (max {_fmt(_LOAN_MAX)} \U0001fa99, {int(_LOAN_INTEREST * 100)}% korko)"
             )
             return
 
         if amount_int > _LOAN_MAX:
-            await ctx.send(f"Maksimi laina on {_LOAN_MAX} \U0001fa99.")
+            await ctx.send(f"Maksimi laina on {_fmt(_LOAN_MAX)} \U0001fa99.")
             return
 
         status, debt, interest, new_balance = await self._run(
@@ -583,11 +584,11 @@ class Casino(commands.Cog, name="casino"):
         )
 
         if status == "existing_debt":
-            await ctx.send(f"Sinulla on jo {debt} \U0001fa99 velkaa. Maksa ensin pois.")
+            await ctx.send(f"Sinulla on jo {_fmt(debt)} \U0001fa99 velkaa. Maksa ensin pois.")
         else:
             await ctx.send(
-                f"Pikavippi Paavo nyökkää hyväksyvästi. Sait {amount_int} \U0001fa99. "
-                f"Velka: {debt} \U0001fa99 (sis. {interest} \U0001fa99 korkoa). Maksa takaisin tai muuten."
+                f"Pikavippi Paavo nyökkää hyväksyvästi. Sait {_fmt(amount_int)} \U0001fa99. "
+                f"Velka: {_fmt(debt)} \U0001fa99 (sis. {_fmt(interest)} \U0001fa99 korkoa). Maksa takaisin tai muuten."
             )
 
     @commands.command(name="luck", help="Näytä luck-tasosi ja sen vaikutus.")
@@ -598,7 +599,7 @@ class Casino(commands.Cog, name="casino"):
         lines = [f"**Luck-taso: {luck}/{_LUCK_MAX}**"]
 
         if next_cost is not None:
-            lines.append(f"\nSeuraava taso ({luck + 1}): {next_cost} \U0001fa99 | `!buyluck`")
+            lines.append(f"\nSeuraava taso ({luck + 1}): {_fmt(next_cost)} \U0001fa99 | `!buyluck`")
         else:
             lines.append("\nMaksimitaso saavutettu!")
 
@@ -612,13 +613,13 @@ class Casino(commands.Cog, name="casino"):
             await ctx.send(f"Olet jo maksimitasolla ({luck}). Ei korkeammalle päästä.")
         elif status == "broke":
             await ctx.send(
-                f"Ei riitä. Tason {luck + 1} hinta on {cost} \U0001fa99, "
-                f"saldosi on {balance} \U0001fa99."
+                f"Ei riitä. Tason {luck + 1} hinta on {_fmt(cost)} \U0001fa99, "
+                f"saldosi on {_fmt(balance)} \U0001fa99."
             )
         else:
             await ctx.send(
-                f"Luck nostettu tasolle **{luck}**! (−{cost} \U0001fa99) "
-                f"Saldo: {balance} \U0001fa99."
+                f"Luck nostettu tasolle **{luck}**! (−{_fmt(cost)} \U0001fa99) "
+                f"Saldo: {_fmt(balance)} \U0001fa99."
             )
 
 

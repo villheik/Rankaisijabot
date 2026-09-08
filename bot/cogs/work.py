@@ -3,6 +3,7 @@ import sqlite3
 import yaml
 from discord.ext import commands, tasks
 from bot.db import DB_PATH
+from bot.fmt import fmt_coins as _fmt
 
 with open("work.yml", encoding="UTF-8") as f:
     _CONFIG = yaml.safe_load(f)
@@ -284,13 +285,13 @@ class Work(commands.Cog, name="work"):
             if channel is None:
                 continue
 
-            msg = f"<@{user_id}> {job.get('flavor', f'Työ {job_name} valmis.')} +{payout} \U0001fa99."
+            msg = f"<@{user_id}> {job.get('flavor', f'Työ {job_name} valmis.')} +{_fmt(payout)} \U0001fa99."
             if debt_paid > 0:
-                msg += f" ({debt_paid} \U0001fa99 meni velan lyhennykseen"
+                msg += f" ({_fmt(debt_paid)} \U0001fa99 meni velan lyhennykseen"
                 if new_debt > 0:
-                    msg += f", velkaa jäljellä {new_debt} \U0001fa99"
+                    msg += f", velkaa jäljellä {_fmt(new_debt)} \U0001fa99"
                 msg += ".)"
-            msg += f" Saldo: {new_balance} \U0001fa99."
+            msg += f" Saldo: {_fmt(new_balance)} \U0001fa99."
             if leveled_up:
                 msg += f"\n🎉 **Nousit tasolle {new_level}!** Töiden nopeus: {_fmt_multiplier(new_level)}×"
             await channel.send(msg)
@@ -312,7 +313,7 @@ class Work(commands.Cog, name="work"):
             available = actual <= 24.0
             icon = "✅" if available else "🔒"
             lines.append(
-                f"{icon} `{job['name']:<12}` {_fmt_duration(actual):<10} {job['payout']:>9} \U0001fa99"
+                f"{icon} `{job['name']:<12}` {_fmt_duration(actual):<10} {_fmt(job['payout']):>12} \U0001fa99"
             )
         return "\n".join(lines)
 
