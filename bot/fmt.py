@@ -1,3 +1,10 @@
+INT64_MAX = 2**63 - 1
+
+
+def cap_balance(n: int) -> int:
+    return min(n, INT64_MAX)
+
+
 def fmt_coins(n: int) -> str:
     if n >= 10_000_000_000:
         exp = len(str(int(n))) - 1

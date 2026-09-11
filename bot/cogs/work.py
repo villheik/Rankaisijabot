@@ -3,7 +3,7 @@ import sqlite3
 import yaml
 from discord.ext import commands, tasks
 from bot.db import DB_PATH
-from bot.fmt import fmt_coins as _fmt
+from bot.fmt import fmt_coins as _fmt, cap_balance as _cap_balance, INT64_MAX as _INT64_MAX
 
 with open("work.yml", encoding="UTF-8") as f:
     _CONFIG = yaml.safe_load(f)
@@ -187,7 +187,7 @@ def _db_collect_finished_jobs():
         balance, debt = row
         debt_paid = min(debt, payout)
         new_debt = debt - debt_paid
-        new_balance = balance + (payout - debt_paid)
+        new_balance = _cap_balance(balance + (payout - debt_paid))
         conn.execute(
             "UPDATE casino_balance SET balance = ?, debt = ? WHERE user_id = ? AND guild_id = ?",
             (new_balance, new_debt, user_id, guild_id),
@@ -292,6 +292,8 @@ class Work(commands.Cog, name="work"):
                     msg += f", velkaa jäljellä {_fmt(new_debt)} \U0001fa99"
                 msg += ".)"
             msg += f" Saldo: {_fmt(new_balance)} \U0001fa99."
+            if new_balance == _INT64_MAX:
+                msg += " Säästöpossu on täynnä. Voitit pelin."
             if leveled_up:
                 msg += f"\n🎉 **Nousit tasolle {new_level}!** Töiden nopeus: {_fmt_multiplier(new_level)}×"
             await channel.send(msg)
