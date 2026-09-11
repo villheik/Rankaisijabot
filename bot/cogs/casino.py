@@ -4,7 +4,7 @@ import sqlite3
 import yaml
 from discord.ext import commands
 from bot.db import DB_PATH
-from bot.fmt import fmt_coins as _fmt
+from bot.fmt import fmt_coins as _fmt, cap_balance as _cap_balance, INT64_MAX as _INT64_MAX
 
 with open("casino.yml", encoding="UTF-8") as f:
     _CONFIG = yaml.safe_load(f)
@@ -196,7 +196,7 @@ def _db_slot(user_id, guild_id, per_line_bet):
         symbol = _jackpot_spin(luck)
         grid = [[symbol] * 3 for _ in range(3)]
         winnings = symbol["payout"] * per_line_bet * _JACKPOT_MULT
-        new_balance = balance - total_bet + winnings
+        new_balance = _cap_balance(balance - total_bet + winnings)
         conn.execute(
             "UPDATE casino_balance SET balance = ?, jackpot_spins = 0 WHERE user_id = ? AND guild_id = ?",
             (new_balance, user_id, guild_id),
@@ -278,7 +278,7 @@ def _db_collect(user_id, guild_id):
     balance, debt, pending = row
     debt_paid = min(debt, pending)
     new_debt = debt - debt_paid
-    new_balance = balance + (pending - debt_paid)
+    new_balance = _cap_balance(balance + (pending - debt_paid))
     conn.execute(
         "UPDATE casino_balance SET balance = ?, debt = ?, pending_winnings = 0 WHERE user_id = ? AND guild_id = ?",
         (new_balance, new_debt, user_id, guild_id),
@@ -501,10 +501,13 @@ class Casino(commands.Cog, name="casino"):
 
         if status == "jackpot":
             jackpot_symbol = grid[0][0]
-            await ctx.send(
+            msg = (
                 f"🎉 **MEGA JACKPOT!** Kaikki {jackpot_symbol['emoji']} ({jackpot_symbol['name']})! "
                 f"Voitit **{_fmt(winnings)} \U0001fa99**! Saldo: {_fmt(balance)} \U0001fa99."
             )
+            if balance == _INT64_MAX:
+                msg += " Säästöpossu on täynnä. Voitit pelin."
+            await ctx.send(msg)
         elif status == "bomb":
             await ctx.send(f"💣 **BOOM!** Kolme pommia räjäyttivät pelikoneesi — ei voittoa tältä kierrokselta. Saldo: {_fmt(balance)} \U0001fa99.")
         elif status == "win":
@@ -557,6 +560,8 @@ class Casino(commands.Cog, name="casino"):
                 msg += f", velkaa jäljellä {_fmt(new_debt)} \U0001fa99"
             msg += ".)"
         msg += f" Saldo: {_fmt(new_balance)} \U0001fa99."
+        if new_balance == _INT64_MAX:
+            msg += " Säästöpossu on täynnä. Voitit pelin."
         await ctx.send(msg)
 
     @commands.command(
