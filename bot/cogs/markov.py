@@ -216,7 +216,8 @@ class Markov(commands.Cog, name="markov"):
 
         if result is None:
             self.bot.logger.warning(f"mimic: make_sentence palautti None kohteelle '{target}' (min_words={min_words})")
-            await context.send(f"Ei pystytty generoimaan tekstiä kohteelle `{target}`.")
+            hint = " Kokeile `!mimic` jos ongelma toistuu." if min_words else ""
+            await context.send(f"Ei pystytty generoimaan tekstiä kohteelle `{target}`.{hint}")
             return
 
         display = target if len(usernames) == 1 else f"{target} ({', '.join(usernames)})"
@@ -234,7 +235,7 @@ class Markov(commands.Cog, name="markov"):
         if target is None:
             await context.send("Käyttö: `!mimiclong <käyttäjänimi tai nickname>`")
             return
-        await self._mimic(context, target, min_words=6)
+        await self._mimic(context, target, min_words=20)
 
 
 async def setup(bot):
