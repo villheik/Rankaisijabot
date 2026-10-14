@@ -4,6 +4,7 @@ bot:
 
 markov:
     rebuild_hour: 0
+    mimic_delete_delay: 300
 
 # List of enabled cogs (groups of commands)
 cogs:

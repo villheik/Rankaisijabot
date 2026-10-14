@@ -124,6 +124,7 @@ class Markov(metaclass=YAMLGetter):
     section = "markov"
 
     rebuild_hour: int
+    mimic_delete_delay: int
 
 
 class CustomException(Exception):
