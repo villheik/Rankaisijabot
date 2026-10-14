@@ -5,4 +5,5 @@ aiohttp
 yfinance
 markovify
 yoyo-migrations
+tzdata
 pytest-asyncio
