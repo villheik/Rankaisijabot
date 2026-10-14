@@ -1,6 +1,8 @@
+import asyncio
 import sqlite3
+import discord
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock, patch
 from bot.cogs.markov import Markov
 
 CHANNEL = 111
@@ -111,3 +113,114 @@ class TestBuildModel:
     def test_model_can_generate_sentence(self, cog):
         model, _ = cog._build_model(CHANNEL, ["alice"])
         assert model.make_sentence(tries=100) is not None
+
+
+class TestDeleteAfter:
+    async def test_deletes_all_messages(self, cog):
+        msg1, msg2 = AsyncMock(), AsyncMock()
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            await cog._delete_after(60, msg1, msg2)
+        msg1.delete.assert_awaited_once()
+        msg2.delete.assert_awaited_once()
+
+    async def test_passes_delay_to_sleep(self, cog):
+        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+            await cog._delete_after(42, AsyncMock())
+        mock_sleep.assert_awaited_once_with(42)
+
+    async def test_ignores_forbidden(self, cog):
+        response = MagicMock()
+        response.status = 403
+        msg = AsyncMock()
+        msg.delete.side_effect = discord.Forbidden(response, "Missing Permissions")
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            await cog._delete_after(1, msg)
+
+    async def test_ignores_not_found(self, cog):
+        response = MagicMock()
+        response.status = 404
+        msg = AsyncMock()
+        msg.delete.side_effect = discord.NotFound(response, "Unknown Message")
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            await cog._delete_after(1, msg)
+
+    async def test_continues_after_first_failure(self, cog):
+        response = MagicMock()
+        response.status = 403
+        msg1, msg2 = AsyncMock(), AsyncMock()
+        msg1.delete.side_effect = discord.Forbidden(response, "Missing Permissions")
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            await cog._delete_after(1, msg1, msg2)
+        msg2.delete.assert_awaited_once()
+
+
+class TestScheduleDelete:
+    def test_no_task_when_delay_zero(self, cog):
+        with patch("asyncio.create_task") as mock_task:
+            cog._schedule_delete(0, MagicMock())
+        mock_task.assert_not_called()
+
+    def test_creates_task_when_delay_positive(self, cog):
+        with patch("asyncio.create_task") as mock_task:
+            cog._schedule_delete(300, MagicMock())
+        mock_task.assert_called_once()
+        mock_task.call_args[0][0].close()
+
+
+class TestMimicDelete:
+    def _make_context(self):
+        ctx = MagicMock()
+        ctx.send = AsyncMock(return_value=MagicMock())
+        return ctx
+
+    async def test_schedules_delete_on_success(self, cog, monkeypatch):
+        monkeypatch.setattr("bot.cogs.markov.constants.Markov.mimic_delete_delay", 300, raising=False)
+        ctx = self._make_context()
+        reply = ctx.send.return_value
+        loop = asyncio.get_running_loop()
+        model = MagicMock()
+        model.make_sentence.return_value = "hello world"
+
+        async def fake_get_model(context, target):
+            return model, loop, [target], None
+
+        cog._get_model = fake_get_model
+        cog._schedule_delete = MagicMock()
+
+        await cog._mimic(ctx, "alice")
+
+        cog._schedule_delete.assert_called_once_with(300, ctx.message, reply)
+
+    async def test_schedules_delete_on_model_error(self, cog, monkeypatch):
+        monkeypatch.setattr("bot.cogs.markov.constants.Markov.mimic_delete_delay", 300, raising=False)
+        ctx = self._make_context()
+        reply = ctx.send.return_value
+
+        async def fake_get_model(context, target):
+            return None, None, [target], "Liian vähän viestejä."
+
+        cog._get_model = fake_get_model
+        cog._schedule_delete = MagicMock()
+
+        await cog._mimic(ctx, "alice")
+
+        cog._schedule_delete.assert_called_once_with(300, ctx.message, reply)
+
+    async def test_schedules_delete_when_sentence_fails(self, cog, monkeypatch):
+        monkeypatch.setattr("bot.cogs.markov.constants.Markov.mimic_delete_delay", 300, raising=False)
+        ctx = self._make_context()
+        reply = ctx.send.return_value
+        loop = asyncio.get_running_loop()
+        model = MagicMock()
+        model.make_sentence.return_value = None
+        cog.bot = MagicMock()
+
+        async def fake_get_model(context, target):
+            return model, loop, [target], None
+
+        cog._get_model = fake_get_model
+        cog._schedule_delete = MagicMock()
+
+        await cog._mimic(ctx, "alice")
+
+        cog._schedule_delete.assert_called_once_with(300, ctx.message, reply)

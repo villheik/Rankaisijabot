@@ -182,6 +182,18 @@ class Markov(commands.Cog, name="markov"):
         conn.close()
         await context.send(f"`{username}` yhdistetty nicknameen `{nickname}`.")
 
+    async def _delete_after(self, delay: int, *messages):
+        await asyncio.sleep(delay)
+        for msg in messages:
+            try:
+                await msg.delete()
+            except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+                pass
+
+    def _schedule_delete(self, delay: int, *messages):
+        if delay:
+            asyncio.create_task(self._delete_after(delay, *messages))
+
     async def _get_model(self, context, target: str):
         usernames = self._resolve_usernames(target, context.channel.id)
         cache_key = (context.channel.id, target.lower())
@@ -194,18 +206,20 @@ class Markov(commands.Cog, name="markov"):
             )
             if model is None:
                 self.bot.logger.warning(f"mimic: liian vähän viestejä kohteelle '{target}' kanavalla {context.channel.id} ({count} viestiä)")
-                await context.send(f"Liian vähän viestejä kohteelle `{target}` (minimi 10).")
-                return None, None, usernames
+                return None, None, usernames, f"Liian vähän viestejä kohteelle `{target}` (minimi 10)."
             self._model_cache[cache_key] = model
             self.bot.logger.info(f"mimic: malli rakennettu ({count} viestiä)")
         else:
             self.bot.logger.info(f"mimic: cache hit '{target}'")
 
-        return self._model_cache[cache_key], loop, usernames
+        return self._model_cache[cache_key], loop, usernames, None
 
     async def _mimic(self, context, target: str, min_words: int = None):
-        model, loop, usernames = await self._get_model(context, target)
-        if model is None:
+        delay = constants.Markov.mimic_delete_delay
+        model, loop, usernames, error = await self._get_model(context, target)
+        if error:
+            reply = await context.send(error)
+            self._schedule_delete(delay, context.message, reply)
             return
 
         kwargs = {"tries": 200}
@@ -217,23 +231,27 @@ class Markov(commands.Cog, name="markov"):
         if result is None:
             self.bot.logger.warning(f"mimic: make_sentence palautti None kohteelle '{target}' (min_words={min_words})")
             hint = " Kokeile `!mimic` jos ongelma toistuu." if min_words else ""
-            await context.send(f"Ei pystytty generoimaan tekstiä kohteelle `{target}`.{hint}")
+            reply = await context.send(f"Ei pystytty generoimaan tekstiä kohteelle `{target}`.{hint}")
+            self._schedule_delete(delay, context.message, reply)
             return
 
         display = target if len(usernames) == 1 else f"{target} ({', '.join(usernames)})"
-        await context.send(f"**{display}:** {result}")
+        reply = await context.send(f"**{display}:** {result}")
+        self._schedule_delete(delay, context.message, reply)
 
     @commands.command(name="mimic")
     async def mimic(self, context, *, target=None):
         if target is None:
-            await context.send("Käyttö: `!mimic <käyttäjänimi tai nickname>`")
+            reply = await context.send("Käyttö: `!mimic <käyttäjänimi tai nickname>`")
+            self._schedule_delete(constants.Markov.mimic_delete_delay, context.message, reply)
             return
         await self._mimic(context, target)
 
     @commands.command(name="mimiclong")
     async def mimiclong(self, context, *, target=None):
         if target is None:
-            await context.send("Käyttö: `!mimiclong <käyttäjänimi tai nickname>`")
+            reply = await context.send("Käyttö: `!mimiclong <käyttäjänimi tai nickname>`")
+            self._schedule_delete(constants.Markov.mimic_delete_delay, context.message, reply)
             return
         await self._mimic(context, target, min_words=20)
 
